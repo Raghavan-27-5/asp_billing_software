@@ -482,6 +482,11 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
             _STOCK_SEED
         )
 
+    # Schema migration: add GOODS_VALUE to DC if not present (backward-compat)
+    existing_dc_cols = {row[1] for row in con.execute("PRAGMA table_info(DC)").fetchall()}
+    if "GOODS_VALUE" not in existing_dc_cols:
+        con.execute("ALTER TABLE DC ADD COLUMN GOODS_VALUE TEXT DEFAULT ''")
+
     con.commit()
 
 
@@ -582,7 +587,7 @@ def save_rows(con: sqlite3.Connection, table: str, header: dict,
 
     extra: dict[str, list[str]] = {
         "ItemInward": ["PDC"],
-        "DC":         ["PDC"],
+        "DC":         ["GOODS_VALUE"],
         "BILL":       ["PDC", "SDPDC"],
     }
     extra_cols = extra.get(table, [])

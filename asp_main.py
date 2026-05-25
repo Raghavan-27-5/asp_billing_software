@@ -1047,20 +1047,20 @@ class DCForm(EntryFormBase):
     NO_LBL     = "DC No."
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
-        self._pdc = tk.StringVar()
-        lbl(parent, "PDC").grid(row=5, column=0, sticky="e", padx=3, pady=2)
-        ent(parent, self._pdc, width=40).grid(row=5, column=1, columnspan=5,
-                                               sticky="w", padx=3)
+        self._goods_value = tk.StringVar()
+        lbl(parent, "Goods Value (opt.)").grid(row=5, column=0, sticky="e", padx=3, pady=2)
+        ent(parent, self._goods_value, width=20).grid(row=5, column=1, columnspan=3,
+                                                       sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
-        return {"PDC": self._pdc.get().strip()}
+        return {"GOODS_VALUE": self._goods_value.get().strip()}
 
     def _reset_extra_fields(self) -> None:
-        self._pdc.set("")
+        self._goods_value.set("")
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
         try:
-            self._pdc.set(row["PDC"] or "")
+            self._goods_value.set(row["GOODS_VALUE"] or "")
         except (IndexError, KeyError):
             pass
 
@@ -1076,8 +1076,9 @@ class DCForm(EntryFormBase):
         ]
 
     def _print_dc(self) -> None:
-        path = pr.print_dc(self._get_print_data(),
-                            db.REPORTS_DIR, open_pdf=True)
+        d = self._get_print_data()
+        d["goods_value"] = self._goods_value.get().strip()
+        path = pr.print_dc(d, db.REPORTS_DIR, open_pdf=True)
         messagebox.showinfo("PDF", f"Saved: {path}", parent=self)
 
     def _print(self) -> None:
