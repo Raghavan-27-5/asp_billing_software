@@ -48,6 +48,10 @@ S_PF_SMALL  = ParagraphStyle("pf_small",  fontName="Times-Roman", fontSize=11, l
 S_PF_SMALL_B= ParagraphStyle("pf_smallb", fontName="Times-Bold",  fontSize=11, leading=12.8)
 S_PF_SECTION= ParagraphStyle("pf_sect",   fontName="Times-Bold",  fontSize=17, alignment=TA_CENTER, leading=19)
 S_DC_REF    = ParagraphStyle("dc_ref",    fontName="Times-Bold",  fontSize=11, leading=13)
+S_TOT_LBL   = ParagraphStyle("totlbl",    fontName="Times-Roman", fontSize=10.5, leading=12)
+S_TOT_VAL   = ParagraphStyle("totval",    fontName="Times-Roman", fontSize=10.5, alignment=TA_RIGHT, leading=12)
+S_TOT_B_LBL = ParagraphStyle("totblbl",   fontName="Times-Bold",  fontSize=11, leading=12.5)
+S_TOT_B_VAL = ParagraphStyle("totbval",   fontName="Times-Bold",  fontSize=11, alignment=TA_RIGHT, leading=12.5)
 
 COMPANY: dict[str, str] = {
     "name":  "Adhwaitha Sri Plating",
@@ -264,27 +268,35 @@ def _totals_block(story: list, data: dict[str, Any],
     igst  = float(data.get("igst",  0.0))
     total = float(data.get("total", 0.0))
 
+    label_style = S_TOT_LBL if small_style is S_SMALL else small_style
+    value_style = S_TOT_VAL if right_style is S_RIGHT else right_style
+    bold_label_style = S_TOT_B_LBL if small_bold is S_SMALL_B else small_bold
+    bold_value_style = S_TOT_B_VAL if right_bold is S_RIGHT_B else right_bold
+
     gst_rows = [
-        [Paragraph("Taxable Amount :", small_style),
-         Paragraph(fmt_amt(tamt), right_style)],
-        [Paragraph("IGST @ 18% :", small_style),
-         Paragraph(fmt_amt(igst) if igst else "", right_style)],
-        [Paragraph("CGST @ 9% :", small_style),
-         Paragraph(fmt_amt(cgst) if cgst else "", right_style)],
-        [Paragraph("SGST @ 9% :", small_style),
-         Paragraph(fmt_amt(sgst) if sgst else "", right_style)],
-        [Paragraph("<b>Grand Total</b>", small_bold),
-         Paragraph(f"<b>{fmt_amt(total)}</b>", right_bold)],
+        [Paragraph("Taxable Amount :", label_style),
+         Paragraph(fmt_amt(tamt), value_style)],
+        [Paragraph("IGST @ 18% :", label_style),
+         Paragraph(fmt_amt(igst) if igst else "", value_style)],
+        [Paragraph("CGST @ 9% :", label_style),
+         Paragraph(fmt_amt(cgst) if cgst else "", value_style)],
+        [Paragraph("SGST @ 9% :", label_style),
+         Paragraph(fmt_amt(sgst) if sgst else "", value_style)],
+        [Paragraph("<b>Grand Total</b>", bold_label_style),
+         Paragraph(f"<b>{fmt_amt(total)}</b>", bold_value_style)],
     ]
-    right_t = Table(gst_rows, colWidths=[54 * mm, 28 * mm])
+    right_t = Table(gst_rows, colWidths=[58 * mm, 30 * mm])
     right_t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 10.8),
-        ("TOPPADDING",    (0, 0), (-1, -1), 1.4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.4),
+        ("FONTSIZE",      (0, 0), (-1, -1), 10.5),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 1.6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.6),
+        ("TOPPADDING",    (0, -1), (-1, -1), 2.1),
+        ("BOTTOMPADDING", (0, -1), (-1, -1), 2.1),
         ("LINEABOVE",     (0, -1), (-1, -1), BOX, colors.black),
         ("LINEBELOW",     (0, -1), (-1, -1), BOX, colors.black),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 1.6),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 1.6),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
     ]))
 
     left_items = [
@@ -293,7 +305,7 @@ def _totals_block(story: list, data: dict[str, Any],
         [Spacer(1, 1 * mm)],
         [Paragraph(amount_words(total), small_style)],
     ]
-    left_t = Table(left_items, colWidths=[122 * mm])
+    left_t = Table(left_items, colWidths=[112 * mm])
     left_t.setStyle(TableStyle([
         ("VALIGN",        (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING",    (0, 0), (-1, -1), 1.2),
@@ -302,7 +314,7 @@ def _totals_block(story: list, data: dict[str, Any],
         ("RIGHTPADDING",  (0, 0), (-1, -1), 1.6),
     ]))
 
-    combined = Table([[left_t, right_t]], colWidths=[122 * mm, 82 * mm])
+    combined = Table([[left_t, right_t]], colWidths=[112 * mm, 88 * mm])
     combined.setStyle(TableStyle([
         ("VALIGN",    (0, 0), (-1, -1), "TOP"),
         ("LINEABOVE", (0, 0), (-1, 0), BOX, colors.black),
@@ -314,12 +326,12 @@ def _totals_block(story: list, data: dict[str, Any],
 def _signature_block(story: list) -> None:
     story.append(Table(
         [["", Paragraph(f"For {COMPANY['name']}", S_RIGHT)]],
-        colWidths=[122 * mm, 82 * mm],
+        colWidths=[112 * mm, 88 * mm],
     ))
     story.append(Spacer(1, 8 * mm))
     story.append(Table(
         [["", Paragraph(f"<b>{COMPANY['sign']}</b>", S_RIGHT_B)]],
-        colWidths=[122 * mm, 82 * mm],
+        colWidths=[112 * mm, 88 * mm],
     ))
 
 
