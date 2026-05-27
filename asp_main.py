@@ -15,7 +15,7 @@ from typing import Any, Callable, Optional
 import asp_db as db
 import asp_print as pr
 from asp_utils import (
-    calc_gst, fmt_amt, parse_date, today_str, to_float, fy_start,
+    calc_gst, fmt_amt, normalize_gstno, parse_date, today_str, to_float, fy_start,
 )
 
 # ── Colour palette (exact VB6 blue theme) ─────────────────────────────────────
@@ -68,6 +68,24 @@ def btn(parent: tk.Widget, text: str, cmd: Callable,
         activebackground="#87CEEB", cursor="hand2",
         **kw,
     )
+
+
+def maximize_window(win: tk.Tk | tk.Toplevel) -> None:
+    """Maximise window cross-platform, with a geometry fallback."""
+    try:
+        win.state("zoomed")
+        return
+    except tk.TclError:
+        pass
+    try:
+        win.attributes("-zoomed", True)
+        return
+    except tk.TclError:
+        pass
+    win.update_idletasks()
+    sw = win.winfo_screenwidth()
+    sh = win.winfo_screenheight()
+    win.geometry(f"{sw}x{sh}+0+0")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -337,6 +355,7 @@ class MainMenu(tk.Toplevel):
         self.resizable(True, True)
         self.protocol("WM_DELETE_WINDOW", self._exit)
         self._build()
+        maximize_window(self)
 
     def _build(self) -> None:
         # ── Header ────────────────────────────────────────────────────────────
@@ -556,16 +575,26 @@ class EntryFormBase(tk.Toplevel):
         self.title(self.TITLE)
         self.geometry("920x600+50+30")
         self.resizable(True, True)
+        self.minsize(1024, 680)
         self._grid_vars: list[dict[str, tk.StringVar]] = []
         self._build()
         self._new_record()
+        maximize_window(self)
 
     # ── Layout ────────────────────────────────────────────────────────────────
 
     def _build(self) -> None:
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        main = tk.Frame(self, bg=FORM_BG)
+        main.grid(row=0, column=0, sticky="nsew")
+        main.grid_columnconfigure(0, weight=1)
+        main.grid_rowconfigure(2, weight=1)
+
         # Title bar
-        hdr = tk.Frame(self, bg=HDR_BG)
-        hdr.pack(fill="x")
+        hdr = tk.Frame(main, bg=HDR_BG)
+        hdr.grid(row=0, column=0, sticky="ew")
         tk.Label(hdr, text=self.TITLE, bg=HDR_BG, fg=WH,
                  font=FONT_BOLD).pack(side="left", padx=8, pady=4)
         self._fy_no = tk.StringVar()
@@ -575,8 +604,12 @@ class EntryFormBase(tk.Toplevel):
                  font=FONT_SMALL).pack(side="right")
 
         # Header fields
-        hf = tk.Frame(self, bg=FORM_BG)
-        hf.pack(fill="x", padx=6, pady=3)
+        hf = tk.Frame(main, bg=FORM_BG)
+        hf.grid(row=1, column=0, sticky="ew", padx=10, pady=6)
+        for c in range(10):
+            hf.grid_columnconfigure(c, weight=0)
+        for c in range(1, 9):
+            hf.grid_columnconfigure(c, weight=1)
 
         self._no_var   = tk.StringVar()
         self._date_var = tk.StringVar(value=today_str())
@@ -601,6 +634,9 @@ class EntryFormBase(tk.Toplevel):
         gst_entry.grid(row=2, column=7, columnspan=2, sticky="w", padx=3)
         gst_entry.bind("<KeyRelease>", self._on_gst_keyrelease)
         gst_entry.bind("<FocusOut>",   self._on_gst_focusout)
+        btn(hf, "Save Customer", self._save_customer, width=12).grid(
+            row=2, column=9, sticky="w", padx=3
+        )
 
         self._sub = tk.StringVar(
             value="Hard Chrome Plating and Diamond Polishing")
@@ -616,39 +652,44 @@ class EntryFormBase(tk.Toplevel):
         self._build_extra_header(hf)
 
         # Grid
-        gf = tk.Frame(self, bg=FORM_BG)
-        gf.pack(fill="x", padx=6, pady=2)
+        gf = tk.Frame(main, bg=FORM_BG)
+        gf.grid(row=2, column=0, sticky="nsew", padx=10, pady=4)
+        gf.grid_columnconfigure(0, weight=1)
         self._build_grid(gf)
 
         # Totals
-        tf = tk.Frame(self, bg=FORM_BG)
-        tf.pack(fill="x", padx=6, pady=2)
+        tf = tk.Frame(main, bg=FORM_BG)
+        tf.grid(row=3, column=0, sticky="ew", padx=10, pady=4)
         self._build_totals(tf)
 
         # Buttons
-        bf = tk.Frame(self, bg=HDR_BG)
-        bf.pack(fill="x", side="bottom", pady=3)
+        bf = tk.Frame(main, bg=HDR_BG)
+        bf.grid(row=4, column=0, sticky="ew", pady=(6, 4))
         for text, cmd, color in self._buttons():
             tk.Button(bf, text=text, command=cmd,
                       bg=color, fg=BTN_FG, font=FONT_BTN,
                       relief="raised", bd=2, padx=5,
                       activebackground="#87CEEB", cursor="hand2"
-                      ).pack(side="left", padx=2, pady=3)
+                      ).pack(side="left", padx=3, pady=4)
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
         """Subclasses add extra header rows (PDC, SDPDC)."""
 
     def _build_grid(self, parent: tk.Frame) -> None:
-        cols = [("Sl.", 4), ("Particulars", 36),
-                ("CAV OD", 7), ("Micron", 6),
-                ("Rate", 9), ("Qty", 5), ("Amount", 11)]
+        cols = [("Sl.", 4), ("Particulars", 42),
+                ("CAV OD", 9), ("Micron", 8),
+                ("Rate", 11), ("Qty", 7), ("Amount", 13)]
+        col_weights = [1, 9, 2, 2, 2, 2, 3]
+        for c, wt in enumerate(col_weights):
+            parent.grid_columnconfigure(c, weight=wt)
         for c, (txt, w) in enumerate(cols):
             tk.Label(parent, text=txt, bg=GRID_HDR, fg=WH,
                      font=("Times New Roman", 8, "bold"),
                      width=w, relief="raised", bd=1
-                     ).grid(row=0, column=c, sticky="ew", padx=1, pady=1)
+                     ).grid(row=0, column=c, sticky="nsew", padx=1, pady=1)
 
         for r in range(self.N_ROWS):
+            parent.grid_rowconfigure(r + 1, weight=1)
             rv: dict[str, tk.StringVar] = {
                 k: tk.StringVar() for k in
                 ("slno", "part", "od", "mic", "rate", "qty", "amt")
@@ -660,27 +701,27 @@ class EntryFormBase(tk.Toplevel):
             tk.Label(parent, textvariable=rv["slno"],
                      bg=WH, fg="#000", width=4,
                      relief="sunken", bd=1,
-                     font=FONT_SMALL).grid(row=r+1, column=0, padx=1, pady=1, sticky="ew")
-            ent(parent, rv["part"], width=36).grid(row=r+1, column=1, padx=1, pady=1)
-            ent(parent, rv["od"],   width=7).grid(row=r+1, column=2, padx=1, pady=1)
-            ent(parent, rv["mic"],  width=6).grid(row=r+1, column=3, padx=1, pady=1)
+                     font=FONT_SMALL).grid(row=r+1, column=0, padx=1, pady=1, sticky="nsew")
+            ent(parent, rv["part"], width=36).grid(row=r+1, column=1, padx=1, pady=1, sticky="nsew")
+            ent(parent, rv["od"],   width=7).grid(row=r+1, column=2, padx=1, pady=1, sticky="nsew")
+            ent(parent, rv["mic"],  width=6).grid(row=r+1, column=3, padx=1, pady=1, sticky="nsew")
 
             re_ = ent(parent, rv["rate"], width=9)
-            re_.grid(row=r+1, column=4, padx=1, pady=1)
+            re_.grid(row=r+1, column=4, padx=1, pady=1, sticky="nsew")
             re_.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
 
             qe = ent(parent, rv["qty"], width=5)
-            qe.grid(row=r+1, column=5, padx=1, pady=1)
+            qe.grid(row=r+1, column=5, padx=1, pady=1, sticky="nsew")
             qe.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
 
             ent(parent, rv["amt"], width=11,
-                state="readonly").grid(row=r+1, column=6, padx=1, pady=1)
+                state="readonly").grid(row=r+1, column=6, padx=1, pady=1, sticky="nsew")
 
         self._extra1 = tk.StringVar()
         self._extra2 = tk.StringVar()
-        for v in (self._extra1, self._extra2):
+        for i, v in enumerate((self._extra1, self._extra2)):
             ent(parent, v, width=90).grid(
-                row=self.N_ROWS+1, column=0, columnspan=7,
+                row=self.N_ROWS + 1 + i, column=0, columnspan=7,
                 padx=1, pady=1, sticky="ew")
 
     def _build_totals(self, parent: tk.Frame) -> None:
@@ -760,9 +801,13 @@ class EntryFormBase(tk.Toplevel):
 
     def _on_gst_keyrelease(self, _event: Any) -> None:
         """Trigger reverse GST lookup once 15 chars entered (full GST length)."""
-        gstno = self._gstno.get().strip()
+        gstno = normalize_gstno(self._gstno.get())
+        if self._gstno.get().strip() != gstno:
+            self._gstno.set(gstno)
         if len(gstno) >= 15:
             self._reverse_gst_lookup(gstno)
+        # Recompute tax mode immediately while typing GST.
+        self._calc_totals()
 
     def _on_gst_focusout(self, _event: Any) -> None:
         """
@@ -771,11 +816,14 @@ class EntryFormBase(tk.Toplevel):
         2. If party name + GST are both present but NOT yet in DB, silently
            save them so future documents autocomplete without re-typing.
         """
-        gstno = self._gstno.get().strip()
+        gstno = normalize_gstno(self._gstno.get())
+        self._gstno.set(gstno)
         if len(gstno) >= 6:
             self._reverse_gst_lookup(gstno)
         # Auto-save new party details silently
         self._autosave_party()
+        # Ensure tax is recalculated even if lookup didn't find a party.
+        self._calc_totals()
 
     def _autosave_party(self) -> None:
         """
@@ -785,7 +833,7 @@ class EntryFormBase(tk.Toplevel):
         on every future form from that moment on.
         """
         pname = self._pname.get().strip()
-        gstno = self._gstno.get().strip()
+        gstno = normalize_gstno(self._gstno.get())
         padd  = self._padd.get().strip()
         if pname and len(pname) >= 3:
             db.upsert_party(self.app.db, pname, padd, gstno)
@@ -795,15 +843,55 @@ class EntryFormBase(tk.Toplevel):
         Look up party by GST number and auto-fill name + address.
         Only fills if fields are currently empty (don't overwrite manual entry).
         """
+        gstno = normalize_gstno(gstno)
+        if not gstno:
+            return
         row = db.lookup_party_by_gst(self.app.db, gstno)
         if row:
-            if not self._pname.get().strip():
-                self._pname.set(row["Party"])
-            if not self._padd.get().strip():
-                self._padd.set(row["sub"] or "")
-            # Always normalise the GST to stored format
-            self._gstno.set(row["GSTNO"])
+            # Local DB is source of truth for repeat billing.
+            self._pname.set(row["Party"] or "")
+            self._padd.set(row["sub"] or "")
+            self._gstno.set(normalize_gstno(row["GSTNO"] or gstno))
             self._calc_totals()
+            return
+
+        # External fallback hook (if provider is configured in future).
+        ext = db.lookup_party_by_gst_external(gstno)
+        if ext:
+            party = (ext.get("party") or "").strip()
+            addr = (ext.get("address") or "").strip()
+            gst_ext = normalize_gstno(ext.get("gstno") or gstno)
+            if party:
+                self._pname.set(party)
+            if addr:
+                self._padd.set(addr)
+            self._gstno.set(gst_ext)
+            if party:
+                db.upsert_party(self.app.db, party, addr, gst_ext)
+            self._calc_totals()
+
+    def _save_customer(self) -> None:
+        """Explicitly save current customer details into local ledger master."""
+        pname = self._pname.get().strip()
+        if len(pname) < 2:
+            messagebox.showwarning("Required", "Enter customer name.", parent=self)
+            return
+        gstno = normalize_gstno(self._gstno.get())
+        if gstno and len(gstno) != 15:
+            messagebox.showwarning(
+                "Invalid GST",
+                "GST number must be 15 characters (or leave blank).",
+                parent=self,
+            )
+            return
+        padd = self._padd.get().strip()
+        db.upsert_party(self.app.db, pname, padd, gstno)
+        self._gstno.set(gstno)
+        messagebox.showinfo(
+            "Saved",
+            f"Customer '{pname}' saved to ledger master.",
+            parent=self,
+        )
 
     def _calc_row(self, rv: dict[str, tk.StringVar]) -> None:
         r = to_float(rv["rate"].get())
@@ -845,7 +933,7 @@ class EntryFormBase(tk.Toplevel):
             "inwdate": parse_date(self._date_var.get()),
             "pname":   self._pname.get().strip(),
             "padd":    self._padd.get().strip(),
-            "PGSTNO":  self._gstno.get().strip(),
+            "PGSTNO":  normalize_gstno(self._gstno.get()),
             "ref":     self._ref.get().strip(),
             "SUB":     self._sub.get().strip(),
             "TAMT":    to_float(self._tamt.get()),
@@ -942,7 +1030,7 @@ class EntryFormBase(tk.Toplevel):
         self._date_var.set(r0["inwdate"])
         self._pname.set(r0["pname"] or "")
         self._padd.set(r0["padd"] or "")
-        self._gstno.set(r0["PGSTNO"] or "")
+        self._gstno.set(normalize_gstno(r0["PGSTNO"] or ""))
         self._sub.set(r0["SUB"] or "")
         self._ref.set(r0["ref"] or "")
         self._tamt.set(fmt_amt(to_float(r0["TAMT"])))

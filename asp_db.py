@@ -9,6 +9,8 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
+from asp_utils import normalize_gstno
+
 # ── Paths ──────────────────────────────────────────────────────────────────────
 import sys
 
@@ -521,10 +523,11 @@ def upsert_party(con: sqlite3.Connection,
     """Insert or update party in HD master."""
     if not party.strip():
         return
+    gst_clean = normalize_gstno(gstno)
     con.execute(
         "INSERT INTO HD(Party,sub,GSTNO) VALUES (?,?,?) "
         "ON CONFLICT(Party) DO UPDATE SET sub=excluded.sub, GSTNO=excluded.GSTNO",
-        (party.strip(), address.strip(), gstno.strip())
+        (party.strip(), address.strip(), gst_clean)
     )
     con.commit()
 
@@ -546,14 +549,24 @@ def lookup_party_by_gst(con: sqlite3.Connection,
     spurious matches while the user is still typing.
     Returns None if not found.
     """
-    gstno = gstno.strip().upper()
+    gstno = normalize_gstno(gstno)
     if len(gstno) < 6:
         return None
     return con.execute(
         "SELECT Party, sub, GSTNO FROM HD "
-        "WHERE UPPER(TRIM(GSTNO)) = ? LIMIT 1",
+        "WHERE UPPER(REPLACE(REPLACE(TRIM(GSTNO), ' ', ''), '-', '')) = ? LIMIT 1",
         (gstno,)
     ).fetchone()
+
+
+def lookup_party_by_gst_external(gstno: str) -> Optional[dict[str, str]]:
+    """
+    Optional external GST lookup hook.
+    Return {'party': ..., 'address': ..., 'gstno': ...} when integrated.
+    Current architecture has no configured provider, so this returns None.
+    """
+    _ = normalize_gstno(gstno)
+    return None
 
 
 def get_all_parties(con: sqlite3.Connection) -> list[sqlite3.Row]:

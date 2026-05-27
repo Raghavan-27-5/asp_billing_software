@@ -97,6 +97,13 @@ def test_calc_gst_interstate():
     assert r["igst"] == 1800.0
     assert r["total"] == 11800.0
 
+def test_calc_gst_interstate_maharashtra():
+    from asp_utils import calc_gst
+    r = calc_gst(1000, 18, "27AACFG6404A1Z2")  # Maharashtra GSTIN
+    assert r["cgst"] == 0.0
+    assert r["sgst"] == 0.0
+    assert r["igst"] == 180.0
+
 def test_calc_gst_no_gstin():
     from asp_utils import calc_gst
     r = calc_gst(1000, 18, "")
@@ -114,11 +121,22 @@ def test_calc_gst_negative_clamp():
     r = calc_gst(-100, 18, "33XXXXX")
     assert r["taxable"] == 0.0
 
+def test_calc_gst_malformed_safe():
+    from asp_utils import calc_gst
+    r = calc_gst(1000, 18, "??bad gst")
+    # No crash; treated as non-TN/non-blank => IGST path.
+    assert r["igst"] == 180.0
+
 def test_fmt_amt():
     from asp_utils import fmt_amt
     assert fmt_amt(1138.05) == "1138.05"
     assert fmt_amt(0.0) == "0.00"
     assert fmt_amt(14921.1, 2) == "14921.10"
+
+def test_normalize_gstno():
+    from asp_utils import normalize_gstno
+    assert normalize_gstno(" 29-aabcp1234k1zx ") == "29AABCP1234K1ZX"
+    assert normalize_gstno("33 AATCS1265K1ZY") == "33AATCS1265K1ZY"
 
 # ── asp_db ────────────────────────────────────────────────────────────────────
 
@@ -188,6 +206,15 @@ def test_db_upsert_party():
     assert row2["sub"] == "New Address"
     con.close()
 
+def test_db_upsert_party_normalizes_gst():
+    import asp_db
+    con = _get_test_con()
+    asp_db.upsert_party(con, "GST NORMALIZE PARTY", "Addr", " 29-aabcp1234k1zx ")
+    row = con.execute("SELECT GSTNO FROM HD WHERE Party='GST NORMALIZE PARTY'").fetchone()
+    assert row is not None
+    assert row["GSTNO"] == "29AABCP1234K1ZX"
+    con.close()
+
 def test_db_upsert_blank_party():
     import asp_db
     con = _get_test_con()
@@ -209,6 +236,20 @@ def test_db_lookup_party_case_insensitive():
     asp_db.upsert_party(con, "BETA CORP", "Mumbai", "27BETA")
     results = asp_db.lookup_party(con, "beta")
     assert any(r["Party"] == "BETA CORP" for r in results)
+    con.close()
+
+def test_db_lookup_party_by_gst_legacy_format():
+    import asp_db
+    con = _get_test_con()
+    legacy_gst = "24-abcde1234f1z5"
+    con.execute(
+        "INSERT OR REPLACE INTO HD(Party, sub, GSTNO) VALUES (?,?,?)",
+        ("LEGACY GST PARTY", "Bangalore", legacy_gst),
+    )
+    con.commit()
+    row = asp_db.lookup_party_by_gst(con, "24ABCDE1234F1Z5")
+    assert row is not None
+    assert row["Party"] == "LEGACY GST PARTY"
     con.close()
 
 def test_db_save_and_load_doc():
@@ -412,15 +453,20 @@ if __name__ == "__main__":
             test_amount_words_crore, test_amount_words_paise]),
         ("asp_utils — GST", [
             test_calc_gst_intrastate, test_calc_gst_interstate,
+            test_calc_gst_interstate_maharashtra,
             test_calc_gst_no_gstin, test_calc_gst_zero_taxable,
-            test_calc_gst_negative_clamp, test_fmt_amt]),
+            test_calc_gst_negative_clamp, test_calc_gst_malformed_safe,
+            test_fmt_amt,
+            test_normalize_gstno]),
         ("asp_db — schema", [
             test_db_schema_tables, test_db_cat_seeded, test_db_hd_seeded]),
         ("asp_db — autonumber", [
             test_db_autonumber, test_db_invalid_auto_field]),
         ("asp_db — party CRUD", [
             test_db_upsert_party, test_db_upsert_blank_party,
-            test_db_lookup_party, test_db_lookup_party_case_insensitive]),
+            test_db_lookup_party, test_db_lookup_party_case_insensitive,
+            test_db_upsert_party_normalizes_gst,
+            test_db_lookup_party_by_gst_legacy_format]),
         ("asp_db — documents", [
             test_db_save_and_load_doc, test_db_delete_doc,
             test_db_invalid_table_save, test_db_get_cat_rate,

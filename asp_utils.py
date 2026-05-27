@@ -6,6 +6,7 @@ No side effects, fully deterministic, no I/O.
 from __future__ import annotations
 
 from datetime import date, datetime
+import re
 from typing import Optional
 
 
@@ -64,6 +65,15 @@ def to_float(value: object) -> float:
 def fmt_amt(value: float, decimals: int = 2) -> str:
     """Format float to fixed decimal string."""
     return f"{value:.{decimals}f}"
+
+
+def normalize_gstno(gstno: str) -> str:
+    """
+    Normalise GST number for consistent matching/storage.
+    - uppercase
+    - remove non-alphanumeric chars (spaces, dashes, etc.)
+    """
+    return re.sub(r"[^A-Z0-9]", "", (gstno or "").upper().strip())
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -152,9 +162,10 @@ def calc_gst(
     """
     taxable = round(max(taxable, 0.0), 2)
     gst_pct = max(gst_pct, 0.0)
-    gstno   = (gstno or "").strip()
+    gstno   = normalize_gstno(gstno)
 
-    intrastate = gstno.startswith("33") or not gstno
+    state_code = gstno[:2]
+    intrastate = (state_code == "33") or (not gstno)
 
     if intrastate:
         half   = round(taxable * gst_pct / 200, 2)   # each half
