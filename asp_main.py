@@ -948,13 +948,12 @@ class EntryFormBase(tk.Toplevel):
         x = self._party_entry.winfo_rootx()
         y = self._party_entry.winfo_rooty() + self._party_entry.winfo_height()
         w = self._party_entry.winfo_width()
-        h = min(150, 20 * len(rows) + 5)
+        h = min(250, 28 * len(rows) + 5)
         self._autocomplete_popup.wm_geometry(f"{w}x{h}+{x}+{y}")
         self._autocomplete_popup.lift()
 
     def _on_party_focusout(self, _event: Any) -> None:
         self.after(100, self._check_focus_and_close)
-        self._autosave_party()
 
     def _on_gst_keyrelease(self, _event: Any) -> None:
         """Trigger reverse GST lookup once 15 chars entered (full GST length)."""
@@ -970,44 +969,32 @@ class EntryFormBase(tk.Toplevel):
         """
         On leaving GST field:
         1. Attempt reverse lookup → fill name + address if found.
-        2. If party name + GST are both present but NOT yet in DB, silently
-           save them so future documents autocomplete without re-typing.
+        2. Recalculate tax to reflect intra/inter-state mode.
+        Customer persistence happens ONLY on Save/Update button click.
         """
         gstno = normalize_gstno(self._gstno.get())
         self._gstno.set(gstno)
         if len(gstno) >= 6:
             self._reverse_gst_lookup(gstno)
-        # Auto-save new party details silently
-        self._autosave_party()
         # Ensure tax is recalculated even if lookup didn't find a party.
         self._calc_totals()
-
-    def _autosave_party(self) -> None:
-        """
-        Silently persist party details to HD master whenever name + GST
-        are both filled in. This means by the time they press Save on the
-        document, the party is already in the database and will autocomplete
-        on every future form from that moment on.
-        """
-        pname = self._pname.get().strip()
-        gstno = normalize_gstno(self._gstno.get())
-        padd  = self._padd.get().strip()
-        if pname and len(pname) >= 3:
-            db.upsert_party(self.app.db, pname, padd, gstno)
 
     def _reverse_gst_lookup(self, gstno: str) -> None:
         """
         Look up party by GST number and auto-fill name + address.
-        Only fills if fields are currently empty (don't overwrite manual entry).
+        Only fills if party name field is currently empty (don't overwrite
+        a name the operator has already typed in manually).
         """
         gstno = normalize_gstno(gstno)
         if not gstno:
             return
         row = db.lookup_party_by_gst(self.app.db, gstno)
         if row:
-            # Local DB is source of truth for repeat billing.
-            self._pname.set(row["Party"] or "")
-            self._padd.set(row["sub"] or "")
+            # Only auto-fill if name field is empty or matches existing
+            current_name = self._pname.get().strip()
+            if not current_name or current_name == (row["Party"] or ""):
+                self._pname.set(row["Party"] or "")
+                self._padd.set(row["sub"] or "")
             self._gstno.set(normalize_gstno(row["GSTNO"] or gstno))
             self._calc_totals()
             return
@@ -1023,8 +1010,6 @@ class EntryFormBase(tk.Toplevel):
             if addr:
                 self._padd.set(addr)
             self._gstno.set(gst_ext)
-            if party:
-                db.upsert_party(self.app.db, party, addr, gst_ext)
             self._calc_totals()
 
     def _save_customer(self) -> None:
