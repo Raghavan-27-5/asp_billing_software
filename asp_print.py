@@ -174,7 +174,8 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
             Paragraph(str(row.get("qty", 1)), S_CENTER),
             Paragraph(fmt_amt(float(row.get("AMT", 0))), S_RIGHT),
         ])
-    while len(data) < 12:
+    min_rows = max(len(data), min(len(data) + 2, 8))
+    while len(data) < min_rows:
         data.append([Paragraph("", S_NORMAL)] * 6)
 
     row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
@@ -213,7 +214,8 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
             Paragraph(str(row.get("part", "")), S_NORMAL),
             Paragraph(str(row.get("qty", 1)), S_CENTER),
         ])
-    while len(data) < 15:
+    min_rows = max(len(data), min(len(data) + 2, 10))
+    while len(data) < min_rows:
         data.append([Paragraph("", S_NORMAL)] * 3)
 
     row_heights = [12.5 * mm] + [11.5 * mm] * (len(data) - 1)
@@ -257,7 +259,8 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
             Paragraph(str(row.get("qty", 1)), S_PF_CENTER),
             Paragraph(fmt_amt(float(row.get("AMT", 0))), S_PF_RIGHT),
         ])
-    while len(data) < 12:
+    min_rows = max(len(data), min(len(data) + 2, 8))
+    while len(data) < min_rows:
         data.append([Paragraph("", S_PF_NORMAL)] * 6)
 
     row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
@@ -315,7 +318,7 @@ def _totals_block(story: list, data: dict[str, Any],
 
     gst_rows.append([Paragraph("<b>Grand Total</b>", bold_label_style),
                      Paragraph(f"<b>{fmt_amt(total)}</b>", bold_value_style)])
-    right_t = Table(gst_rows, colWidths=[62 * mm, 36 * mm])
+    right_t = Table(gst_rows, colWidths=[58 * mm, 34 * mm])
     right_t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 15),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
@@ -335,7 +338,7 @@ def _totals_block(story: list, data: dict[str, Any],
         [Spacer(1, 1 * mm)],
         [Paragraph(amount_words(total), small_style)],
     ]
-    left_t = Table(left_items, colWidths=[112 * mm])
+    left_t = Table(left_items, colWidths=[CONTENT_W - 94 * mm])
     left_t.setStyle(TableStyle([
         ("VALIGN",        (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING",    (0, 0), (-1, -1), 1.2),
@@ -344,7 +347,7 @@ def _totals_block(story: list, data: dict[str, Any],
         ("RIGHTPADDING",  (0, 0), (-1, -1), 1.6),
     ]))
 
-    combined = Table([[left_t, right_t]], colWidths=[112 * mm, 88 * mm])
+    combined = Table([[left_t, right_t]], colWidths=[CONTENT_W - 94 * mm, 94 * mm])
     combined.setStyle(TableStyle([
         ("VALIGN",    (0, 0), (-1, -1), "TOP"),
         ("LINEABOVE", (0, 0), (-1, 0), BOX, colors.black),
@@ -356,12 +359,12 @@ def _totals_block(story: list, data: dict[str, Any],
 def _signature_block(story: list) -> None:
     story.append(Table(
         [["", Paragraph(f"For {COMPANY['name']}", S_RIGHT_B)]],
-        colWidths=[112 * mm, 88 * mm],
+        colWidths=[CONTENT_W - 94 * mm, 94 * mm],
     ))
     story.append(Spacer(1, 8 * mm))
     story.append(Table(
         [["", Paragraph(f"<b>{COMPANY['sign']}</b>", S_RIGHT_B)]],
-        colWidths=[112 * mm, 88 * mm],
+        colWidths=[CONTENT_W - 94 * mm, 94 * mm],
     ))
 
 
@@ -376,7 +379,7 @@ def _build_story(data: dict[str, Any], doc_type: str, no_label: str) -> list:
     return story
 
 
-def _build_story_dc(data: dict[str, Any]) -> list:
+def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
     """DC story: no amount column, goods_value in party block, no totals block."""
     story: list = []
     _company_header(story)
@@ -384,7 +387,12 @@ def _build_story_dc(data: dict[str, Any]) -> list:
     story.append(Spacer(1, 1 * mm))
     story.append(Paragraph("<b>DELIVERY CHALLAN</b>", S_SECTION))
     story.append(Spacer(1, 1.2 * mm))
-    story.append(Paragraph("ORIGINAL COPY", S_CENTER))
+    # Copy label: ORIGINAL / DUPLICATE / TRIPLICATE
+    S_COPY_LABEL = ParagraphStyle(
+        "copylabel", fontName="Times-Bold", fontSize=18,
+        alignment=TA_CENTER, leading=22,
+    )
+    story.append(Paragraph(f"<b>{copy_label}</b>", S_COPY_LABEL))
     story.append(Spacer(1, 1.2 * mm))
 
     cust_details = [
@@ -541,11 +549,19 @@ def print_job_work_bill(data: dict[str, Any], reports_dir: Path,
 
 def print_dc(data: dict[str, Any], reports_dir: Path,
              open_pdf: bool = True) -> str:
-    path = str(reports_dir / f"DC_{data['no']}.pdf")
-    _render(_build_story_dc(data), path)
+    """Generate ORIGINAL + DUPLICATE + TRIPLICATE DC PDFs and open all three."""
+    paths: list[str] = []
+    for label in ("ORIGINAL", "DUPLICATE", "TRIPLICATE"):
+        fname = f"DC_{data['no']}_{label}.pdf"
+        path = str(reports_dir / fname)
+        _render(_build_story_dc(data, copy_label=label), path)
+        paths.append(path)
     if open_pdf:
-        _open_pdf(path)
-    return path
+        import time
+        for p in paths:
+            _open_pdf(p)
+            time.sleep(0.3)
+    return paths[0]
 
 
 def print_purchase_order(data: dict[str, Any], reports_dir: Path,

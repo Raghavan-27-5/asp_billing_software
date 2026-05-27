@@ -56,7 +56,7 @@ def ent(parent: tk.Widget, var: Optional[tk.Variable] = None,
         parent, textvariable=var, width=width,
         bg=WH, fg="#000000", font=FONT_MAIN,
         relief="flat", bd=0,
-        highlightbackground="#999999", highlightthickness=1,
+        highlightbackground="#999999", highlightthickness=0,
         **kw,
     )
 
@@ -645,9 +645,22 @@ class EntryFormBase(tk.Toplevel):
         self._pname = tk.StringVar()
         self._padd  = tk.StringVar()
         lbl(hf, "To").grid(row=ro, column=0, sticky="ne", padx=3, pady=2)
-        pe = ent(hf, self._pname, width=58)
-        pe.grid(row=ro, column=1, columnspan=8, sticky="ew", padx=3, pady=2)
+
+        # Customer field frame: entry + dropdown arrow button
+        cust_frame = tk.Frame(hf, bg=FORM_BG)
+        cust_frame.grid(row=ro, column=1, columnspan=8, sticky="ew", padx=3, pady=2)
+        cust_frame.grid_columnconfigure(0, weight=1)
+        pe = ent(cust_frame, self._pname, width=54)
+        pe.grid(row=0, column=0, sticky="ew")
         self._party_entry = pe
+        # Dropdown arrow button
+        self._cust_arrow_btn = tk.Button(
+            cust_frame, text="▼", command=self._toggle_customer_dropdown,
+            bg=BTN_BG, fg=BTN_FG, font=("Arial", 10, "bold"),
+            relief="raised", bd=1, width=3, cursor="hand2",
+            activebackground="#87CEEB",
+        )
+        self._cust_arrow_btn.grid(row=0, column=1, sticky="ns")
         pe.bind("<FocusOut>", self._on_party_focusout)
         pe.bind("<KeyRelease>", self._autocomplete)
         pe.bind("<Return>", self._on_entry_return)
@@ -893,10 +906,23 @@ class EntryFormBase(tk.Toplevel):
             self._totals_widgets["total"][0].grid(row=2, column=0, sticky="e", padx=4, pady=1)
             self._totals_widgets["total"][1].grid(row=2, column=1, padx=4, pady=1)
 
+    def _toggle_customer_dropdown(self) -> None:
+        """Arrow button: show all customers if popup closed, close if open."""
+        if hasattr(self, "_autocomplete_popup") and self._autocomplete_popup.winfo_exists():
+            self._close_autocomplete_popup()
+            return
+        rows = db.get_all_parties(self.app.db)
+        if not rows:
+            return
+        self._show_autocomplete_popup(rows)
+        self._party_entry.focus_set()
+
     def _on_entry_return(self, event: Any) -> None:
         if hasattr(self, "_autocomplete_popup") and self._autocomplete_popup.winfo_exists():
             if self._autocomplete_list.size() > 0:
-                self._autocomplete_list.selection_set(0)
+                sel = self._autocomplete_list.curselection()
+                if not sel:
+                    self._autocomplete_list.selection_set(0)
                 self._on_popup_select()
 
     def _on_popup_select(self, event: Any = None) -> None:
@@ -918,13 +944,14 @@ class EntryFormBase(tk.Toplevel):
             self._autocomplete_popup.destroy()
 
     def _on_popup_focusout(self, event: Any) -> None:
-        self.after(100, self._check_focus_and_close)
+        self.after(150, self._check_focus_and_close)
 
     def _check_focus_and_close(self) -> None:
         if not hasattr(self, "_autocomplete_popup") or not self._autocomplete_popup.winfo_exists():
             return
         focus = self.focus_get()
-        if focus not in (self._party_entry, self._autocomplete_list):
+        if focus not in (self._party_entry, self._autocomplete_list,
+                         getattr(self, "_cust_arrow_btn", None)):
             self._close_autocomplete_popup()
 
     def _autocomplete(self, event: Any) -> None:
@@ -947,16 +974,22 @@ class EntryFormBase(tk.Toplevel):
             self._close_autocomplete_popup()
             return
 
+        self._show_autocomplete_popup(rows)
+
+    def _show_autocomplete_popup(self, rows: list) -> None:
+        """Display (or refresh) the autocomplete dropdown with given rows."""
         if not hasattr(self, "_autocomplete_popup") or not self._autocomplete_popup.winfo_exists():
             self._autocomplete_popup = tk.Toplevel(self)
             self._autocomplete_popup.wm_overrideredirect(True)
             self._autocomplete_list = tk.Listbox(
                 self._autocomplete_popup, font=FONT_MAIN,
                 bg=WH, fg="#000000", bd=1, relief="solid",
-                selectbackground="#90EE90", selectforeground="black"
+                selectbackground="#90EE90", selectforeground="black",
+                activestyle="none",
             )
             self._autocomplete_list.pack(fill="both", expand=True)
-            self._autocomplete_list.bind("<Double-Button-1>", self._on_popup_select)
+            # Single-click selection
+            self._autocomplete_list.bind("<ButtonRelease-1>", self._on_popup_select)
             self._autocomplete_list.bind("<Return>", self._on_popup_select)
             self._autocomplete_list.bind("<Escape>", lambda e: self._close_autocomplete_popup())
             self._autocomplete_list.bind("<FocusOut>", self._on_popup_focusout)
@@ -969,8 +1002,8 @@ class EntryFormBase(tk.Toplevel):
         self.update_idletasks()
         x = self._party_entry.winfo_rootx()
         y = self._party_entry.winfo_rooty() + self._party_entry.winfo_height()
-        w = self._party_entry.winfo_width()
-        h = min(250, 28 * len(rows) + 5)
+        w = self._party_entry.winfo_width() + self._cust_arrow_btn.winfo_width()
+        h = min(300, 26 * len(rows) + 4)
         self._autocomplete_popup.wm_geometry(f"{w}x{h}+{x}+{y}")
         self._autocomplete_popup.lift()
 
