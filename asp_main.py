@@ -824,6 +824,28 @@ class EntryFormBase(tk.Toplevel):
 
         self._update_totals_grid()
 
+    # ── Dirty-form guard ───────────────────────────────────────────────────────
+
+    def _has_edits(self) -> bool:
+        """Return True if the form has any line-item data entered."""
+        for rv in self._grid_vars:
+            if rv["part"].get().strip():
+                return True
+        return False
+
+    def _confirm_load(self, source_label: str) -> bool:
+        """Prompt operator before loading if form has unsaved edits."""
+        if self._has_edits():
+            return messagebox.askyesno(
+                "Confirm Load",
+                f"Current form has unsaved data.\n"
+                f"Loading {source_label} will overwrite it.\n\nContinue?",
+                parent=self,
+            )
+        return True
+
+    # ── Buttons ───────────────────────────────────────────────────────────────
+
     def _buttons(self) -> list[tuple[str, Callable, str]]:
         return [
             ("&New",    self._new_record, BTN_BG),
@@ -1162,6 +1184,8 @@ class EntryFormBase(tk.Toplevel):
                             f"Record {inwno} updated.", parent=self)
 
     def _load(self) -> None:
+        if not self._confirm_load(self.TABLE):
+            return
         num = simpledialog.askstring("InvSDP", f"Enter the {self.NO_LBL}", parent=self)
         if not num:
             return
@@ -1324,8 +1348,10 @@ class DCForm(EntryFormBase):
         return [
             ("&New",               self._new_record,    BTN_BG),
             ("Load Inward",        self._load_inward,   BTN_BG),
+            ("Load Quotation",     self._load_quotation_dc, BTN_BG),
             ("Load DC",            self._load,          BTN_BG),
             ("&Save",              self._save,          "#90EE90"),
+            ("&Update",            self._update,        BTN_BG),
             ("Print DC",           self._print_dc,      BTN_BG),
             ("&Delete",            self._delete,        "#FFB6C1"),
             ("Email",              self._email,         BTN_BG),
@@ -1333,6 +1359,8 @@ class DCForm(EntryFormBase):
         ]
 
     def _load_inward(self) -> None:
+        if not self._confirm_load("Inward"):
+            return
         num = simpledialog.askstring("InvSDP", "Enter the Item Inward No.", parent=self)
         if not num:
             return
@@ -1366,6 +1394,46 @@ class DCForm(EntryFormBase):
 
         self._calc_totals()
         messagebox.showinfo("Loaded", f"Inward {num} loaded (non-financial).", parent=self)
+
+    def _load_quotation_dc(self) -> None:
+        """Load a saved Quotation into DC form (non-financial — no rates/amounts)."""
+        if not self._confirm_load("Quotation"):
+            return
+        num = simpledialog.askstring("InvSDP", "Enter the Quotation No.", parent=self)
+        if not num:
+            return
+        num = num.strip()
+        rows = db.load_doc(self.app.db, "Quotation", num)
+        if not rows:
+            messagebox.showwarning("Not Found", f"Quotation No. {num} not found.", parent=self)
+            return
+
+        r0 = rows[0]
+        self._pname.set(r0["pname"] or "")
+        self._padd.set(r0["padd"] or "")
+        self._gstno.set(normalize_gstno(r0["PGSTNO"] or ""))
+        self._sub.set(r0["SUB"] or "")
+        self._ref.set(f"Quot Ref: {num}")
+        self._inward_ref_num = num
+        self._inward_ref_date = r0["inwdate"] or ""
+
+        # Clear grid then populate items (non-financial: no rates/amounts)
+        for rv in self._grid_vars:
+            for k in ("part", "od", "mic", "rate", "qty", "amt"):
+                rv[k].set("")
+            rv["qty"].set("1")
+
+        for i, row in enumerate(rows[:self.N_ROWS]):
+            rv = self._grid_vars[i]
+            rv["part"].set(str(row["part"]))
+            rv["od"].set(str(row["od"]) if row["od"] else "")
+            rv["mic"].set(str(row["guage"]) if row["guage"] else "")
+            rv["rate"].set("")   # DC is non-financial
+            rv["qty"].set(str(row["qty"]))
+            rv["amt"].set("")    # DC is non-financial
+
+        self._calc_totals()
+        messagebox.showinfo("Loaded", f"Quotation {num} loaded (non-financial).", parent=self)
 
     def _print_dc(self) -> None:
         d = self._get_print_data()
@@ -1437,6 +1505,8 @@ class BillForm(EntryFormBase):
         ]
 
     def _load_dc(self) -> None:
+        if not self._confirm_load("DC"):
+            return
         num = simpledialog.askstring("InvSDP", "Enter the D.C No.", parent=self)
         if not num:
             return
@@ -1455,6 +1525,19 @@ class BillForm(EntryFormBase):
 
         if hasattr(self, "_sdpdc"):
             self._sdpdc.set(num)
+        # Populate customer D.Slip No. from DC's GOODS_VALUE/PDC
+        if hasattr(self, "_pdc"):
+            goods_val = ""
+            try:
+                goods_val = r0["GOODS_VALUE"] or ""
+            except (IndexError, KeyError):
+                pass
+            if not goods_val:
+                try:
+                    goods_val = r0["PDC"] or ""
+                except (IndexError, KeyError):
+                    pass
+            self._pdc.set(goods_val)
 
         inward_no = r0.get("sdidcno", "")
         self._inward_ref_num = inward_no
@@ -1500,6 +1583,8 @@ class BillForm(EntryFormBase):
         messagebox.showinfo("Loaded", f"DC {num} loaded successfully.", parent=self)
 
     def _load_proforma_invoice(self) -> None:
+        if not self._confirm_load("Proforma Invoice"):
+            return
         num = simpledialog.askstring("InvSDP", "Enter the Quotation No.", parent=self)
         if not num:
             return
@@ -1598,6 +1683,8 @@ class ItemInwardForm(EntryFormBase):
         ]
 
     def _load_quotation(self) -> None:
+        if not self._confirm_load("Quotation"):
+            return
         num = simpledialog.askstring("InvSDP", "Enter the Quotation No.", parent=self)
         if not num:
             return
