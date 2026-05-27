@@ -281,6 +281,7 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
         TAMT     REAL    DEFAULT 0,
         CGST     REAL    DEFAULT 0,
         SGST     REAL    DEFAULT 0,
+        IGST     REAL    DEFAULT 0,
         GST      REAL    DEFAULT 0,
         NETAMT   REAL    DEFAULT 0
     );
@@ -489,6 +490,11 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
     if "GOODS_VALUE" not in existing_dc_cols:
         con.execute("ALTER TABLE DC ADD COLUMN GOODS_VALUE TEXT DEFAULT ''")
 
+    # Schema migration: add IGST to ItemInward if not present (backward-compat)
+    existing_ii_cols = {row[1] for row in con.execute("PRAGMA table_info(ItemInward)").fetchall()}
+    if "IGST" not in existing_ii_cols:
+        con.execute("ALTER TABLE ItemInward ADD COLUMN IGST REAL DEFAULT 0")
+
     con.commit()
 
 
@@ -599,9 +605,9 @@ def save_rows(con: sqlite3.Connection, table: str, header: dict,
                  "IGST", "GST", "NETAMT"]
 
     extra: dict[str, list[str]] = {
-        "ItemInward": ["PDC"],
-        "DC":         ["GOODS_VALUE"],
-        "BILL":       ["PDC", "SDPDC"],
+        "ItemInward": ["PDC", "sdidcno", "sdidt"],
+        "DC":         ["GOODS_VALUE", "sdidcno", "sdidt"],
+        "BILL":       ["PDC", "SDPDC", "sdidcno", "sdidt"],
     }
     extra_cols = extra.get(table, [])
     all_cols = base_cols + extra_cols

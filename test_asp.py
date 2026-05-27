@@ -271,6 +271,63 @@ def test_db_save_and_load_doc():
     assert loaded[0]["AMT"] == 1000.0
     con.close()
 
+def test_db_chained_workflow_persistence():
+    import asp_db
+    con = _get_test_con()
+    # 1. Quotation
+    q_header = {
+        "inwno": "Q101", "inwdate": "19/03/2026",
+        "pname": "CHAIN PARTY", "padd": "Chennai", "PGSTNO": "33TEST",
+        "ref": "", "SUB": "", "TAMT": 100.0, "CGST": 9.0, "SGST": 9.0, "IGST": 0.0, "NETAMT": 118.0,
+    }
+    q_rows = [{"slno":1,"part":"P1","od":10,"guage":5,"qty":1,"rate":100.0,"AMT":100.0}]
+    asp_db.save_rows(con, "Quotation", q_header, q_rows)
+    
+    # 2. Inward loading quotation
+    inw_header = {
+        "inwno": "I201", "inwdate": "20/03/2026",
+        "pname": "CHAIN PARTY", "padd": "Chennai", "PGSTNO": "33TEST",
+        "ref": "Quot Ref: Q101", "SUB": "", "TAMT": 100.0, "CGST": 9.0, "SGST": 9.0, "IGST": 0.0, "NETAMT": 118.0,
+        "sdidcno": "Q101", "sdidt": "19/03/2026"
+    }
+    inw_rows = [{"slno":1,"part":"P1","od":10,"guage":5,"qty":1,"rate":100.0,"AMT":100.0}]
+    asp_db.save_rows(con, "ItemInward", inw_header, inw_rows)
+    
+    # 3. DC loading inward
+    dc_header = {
+        "inwno": "DC301", "inwdate": "21/03/2026",
+        "pname": "CHAIN PARTY", "padd": "Chennai", "PGSTNO": "33TEST",
+        "ref": "Inw Ref: I201", "SUB": "", "TAMT": 0.0, "CGST": 0.0, "SGST": 0.0, "IGST": 0.0, "NETAMT": 0.0,
+        "sdidcno": "I201", "sdidt": "20/03/2026"
+    }
+    dc_rows = [{"slno":1,"part":"P1","od":10,"guage":5,"qty":1,"rate":0.0,"AMT":0.0}]
+    asp_db.save_rows(con, "DC", dc_header, dc_rows)
+    
+    # 4. Bill loading DC
+    bill_header = {
+        "inwno": "B401", "inwdate": "22/03/2026",
+        "pname": "CHAIN PARTY", "padd": "Chennai", "PGSTNO": "33TEST",
+        "ref": "DC Ref: DC301", "SUB": "", "TAMT": 100.0, "CGST": 9.0, "SGST": 9.0, "IGST": 0.0, "NETAMT": 118.0,
+        "sdidcno": "DC301", "sdidt": "21/03/2026", "SDPDC": "DC301"
+    }
+    bill_rows = [{"slno":1,"part":"P1","od":10,"guage":5,"qty":1,"rate":100.0,"AMT":100.0}]
+    asp_db.save_rows(con, "BILL", bill_header, bill_rows)
+    
+    # Load and verify
+    inw_loaded = asp_db.load_doc(con, "ItemInward", "I201")
+    assert len(inw_loaded) == 1
+    assert inw_loaded[0]["sdidcno"] == "Q101"
+    
+    dc_loaded = asp_db.load_doc(con, "DC", "DC301")
+    assert len(dc_loaded) == 1
+    assert dc_loaded[0]["sdidcno"] == "I201"
+    
+    bill_loaded = asp_db.load_doc(con, "BILL", "B401")
+    assert len(bill_loaded) == 1
+    assert bill_loaded[0]["sdidcno"] == "DC301"
+    
+    con.close()
+
 def test_db_delete_doc():
     import asp_db
     con = _get_test_con()
@@ -468,7 +525,7 @@ if __name__ == "__main__":
             test_db_upsert_party_normalizes_gst,
             test_db_lookup_party_by_gst_legacy_format]),
         ("asp_db — documents", [
-            test_db_save_and_load_doc, test_db_delete_doc,
+            test_db_save_and_load_doc, test_db_chained_workflow_persistence, test_db_delete_doc,
             test_db_invalid_table_save, test_db_get_cat_rate,
             test_db_list_docs_empty, test_db_list_docs_with_search]),
         ("asp_print — PDFs", [

@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, simpledialog
 from typing import Any, Callable, Optional
 
 import asp_db as db
@@ -464,7 +464,7 @@ class MainMenu(tk.Toplevel):
         tk.Label(center, text="👤", bg=BG, fg=WH,
                  font=("Arial", 48)).pack(pady=6)
 
-        btn(center, "Quotation", self.app.open_quotation, width=14).pack(pady=3)
+        btn(center, "Change Date", self._change_date, width=14).pack(pady=3)
         btn(center, "EXIT", self._exit, width=14, bg="#FF9999").pack(pady=3)
 
         # RIGHT
@@ -483,6 +483,14 @@ class MainMenu(tk.Toplevel):
             ("Others",                  self.app.open_others),
         ]:
             btn(right, text, cmd, width=24).pack(pady=2, fill="x")
+
+    def _change_date(self) -> None:
+        d = simpledialog.askstring("InvSDP", "Enter FROM date (DD/MM/YYYY):", parent=self)
+        if d:
+            self._frm.set(parse_date(d.strip()))
+        d2 = simpledialog.askstring("InvSDP", "Enter TO date (DD/MM/YYYY):", parent=self)
+        if d2:
+            self._to.set(parse_date(d2.strip()))
 
     def _exit(self) -> None:
         if messagebox.askyesno("Exit", "Exit Adhwaitha Sri Plating?", parent=self):
@@ -623,8 +631,11 @@ class EntryFormBase(tk.Toplevel):
         lbl(hf, "To").grid(row=1, column=0, sticky="ne", padx=3, pady=2)
         pe = ent(hf, self._pname, width=58)
         pe.grid(row=1, column=1, columnspan=8, sticky="ew", padx=3, pady=2)
+        self._party_entry = pe
         pe.bind("<FocusOut>", self._on_party_focusout)
         pe.bind("<KeyRelease>", self._autocomplete)
+        pe.bind("<Return>", self._on_entry_return)
+        pe.bind("<Escape>", lambda e: self._close_autocomplete_popup())
 
         self._gstno = tk.StringVar()
         ent(hf, self._padd, width=46).grid(row=2, column=1, columnspan=5,
@@ -701,21 +712,21 @@ class EntryFormBase(tk.Toplevel):
             tk.Label(parent, textvariable=rv["slno"],
                      bg=WH, fg="#000", width=4,
                      relief="sunken", bd=1,
-                     font=FONT_SMALL).grid(row=r+1, column=0, padx=1, pady=1, sticky="nsew")
-            ent(parent, rv["part"], width=36).grid(row=r+1, column=1, padx=1, pady=1, sticky="nsew")
-            ent(parent, rv["od"],   width=7).grid(row=r+1, column=2, padx=1, pady=1, sticky="nsew")
-            ent(parent, rv["mic"],  width=6).grid(row=r+1, column=3, padx=1, pady=1, sticky="nsew")
+                     font=FONT_SMALL).grid(row=r+1, column=0, padx=1, pady=(0, 0), sticky="nsew")
+            ent(parent, rv["part"], width=36).grid(row=r+1, column=1, padx=1, pady=(0, 0), sticky="nsew")
+            ent(parent, rv["od"],   width=7).grid(row=r+1, column=2, padx=1, pady=(0, 0), sticky="nsew")
+            ent(parent, rv["mic"],  width=6).grid(row=r+1, column=3, padx=1, pady=(0, 0), sticky="nsew")
 
             re_ = ent(parent, rv["rate"], width=9)
-            re_.grid(row=r+1, column=4, padx=1, pady=1, sticky="nsew")
+            re_.grid(row=r+1, column=4, padx=1, pady=(0, 0), sticky="nsew")
             re_.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
 
             qe = ent(parent, rv["qty"], width=5)
-            qe.grid(row=r+1, column=5, padx=1, pady=1, sticky="nsew")
+            qe.grid(row=r+1, column=5, padx=1, pady=(0, 0), sticky="nsew")
             qe.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
 
             ent(parent, rv["amt"], width=11,
-                state="readonly").grid(row=r+1, column=6, padx=1, pady=1, sticky="nsew")
+                state="readonly").grid(row=r+1, column=6, padx=1, pady=(0, 0), sticky="nsew")
 
         self._extra1 = tk.StringVar()
         self._extra2 = tk.StringVar()
@@ -759,15 +770,21 @@ class EntryFormBase(tk.Toplevel):
         self._igst_v = tk.StringVar(value="0.00")
         self._total  = tk.StringVar(value="0.00")
 
-        for i, (lbl_t, var) in enumerate([
-            ("Taxable Amount", self._tamt),
-            ("CGST @ 9 %",     self._cgst_v),
-            ("SGST @ 9 %",     self._sgst_v),
-            ("IGST @ 18 %",    self._igst_v),
-            ("Grand Total",    self._total),
+        self._totals_widgets = {}
+        for i, (key, lbl_t, var) in enumerate([
+            ("tamt", "Taxable Amount", self._tamt),
+            ("cgst", "CGST @ 9 %",     self._cgst_v),
+            ("sgst", "SGST @ 9 %",     self._sgst_v),
+            ("igst", "IGST @ 18 %",    self._igst_v),
+            ("total", "Grand Total",    self._total),
         ]):
-            lbl(rf, f"{lbl_t} :").grid(row=i, column=0, sticky="e", padx=4, pady=1)
-            ent(rf, var, width=12, state="readonly").grid(row=i, column=1, padx=4, pady=1)
+            l = lbl(rf, f"{lbl_t} :")
+            l.grid(row=i, column=0, sticky="e", padx=4, pady=1)
+            e = ent(rf, var, width=12, state="readonly")
+            e.grid(row=i, column=1, padx=4, pady=1)
+            self._totals_widgets[key] = (l, e, i)
+
+        self._update_totals_grid()
 
     def _buttons(self) -> list[tuple[str, Callable, str]]:
         return [
@@ -783,20 +800,122 @@ class EntryFormBase(tk.Toplevel):
 
     # ── Business logic ────────────────────────────────────────────────────────
 
-    def _autocomplete(self, _event: Any) -> None:
-        txt = self._pname.get().strip()
-        if len(txt) < 2:
+    def _update_totals_grid(self) -> None:
+        if not hasattr(self, "_totals_widgets"):
             return
-        rows = db.lookup_party(self.app.db, txt)
-        if rows:
-            r = rows[0]
-            self._pname.set(r["Party"])
-            self._padd.set(r["sub"] or "")
-            self._gstno.set(r["GSTNO"] or "")
+        gstno = normalize_gstno(self._gstno.get())
+        state_code = gstno[:2]
+        intrastate = (state_code == "33") or (not gstno)
+        
+        self._totals_widgets["tamt"][0].grid(row=0, column=0, sticky="e")
+        self._totals_widgets["tamt"][1].grid(row=0, column=1)
+        
+        if intrastate:
+            self._totals_widgets["igst"][0].grid_forget()
+            self._totals_widgets["igst"][1].grid_forget()
+            
+            self._totals_widgets["cgst"][0].grid(row=1, column=0, sticky="e", padx=4, pady=1)
+            self._totals_widgets["cgst"][1].grid(row=1, column=1, padx=4, pady=1)
+            self._totals_widgets["sgst"][0].grid(row=2, column=0, sticky="e", padx=4, pady=1)
+            self._totals_widgets["sgst"][1].grid(row=2, column=1, padx=4, pady=1)
+            
+            self._totals_widgets["total"][0].grid(row=3, column=0, sticky="e", padx=4, pady=1)
+            self._totals_widgets["total"][1].grid(row=3, column=1, padx=4, pady=1)
+        else:
+            self._totals_widgets["cgst"][0].grid_forget()
+            self._totals_widgets["cgst"][1].grid_forget()
+            self._totals_widgets["sgst"][0].grid_forget()
+            self._totals_widgets["sgst"][1].grid_forget()
+            
+            self._totals_widgets["igst"][0].grid(row=1, column=0, sticky="e", padx=4, pady=1)
+            self._totals_widgets["igst"][1].grid(row=1, column=1, padx=4, pady=1)
+            
+            self._totals_widgets["total"][0].grid(row=2, column=0, sticky="e", padx=4, pady=1)
+            self._totals_widgets["total"][1].grid(row=2, column=1, padx=4, pady=1)
+
+    def _on_entry_return(self, event: Any) -> None:
+        if hasattr(self, "_autocomplete_popup") and self._autocomplete_popup.winfo_exists():
+            if self._autocomplete_list.size() > 0:
+                self._autocomplete_list.selection_set(0)
+                self._on_popup_select()
+
+    def _on_popup_select(self, event: Any = None) -> None:
+        if not hasattr(self, "_autocomplete_list"):
+            return
+        sel = self._autocomplete_list.curselection()
+        if sel:
+            idx = sel[0]
+            row = self._autocomplete_data[idx]
+            self._pname.set(row["Party"])
+            self._padd.set(row["sub"] or "")
+            self._gstno.set(normalize_gstno(row["GSTNO"] or ""))
             self._calc_totals()
+            self._close_autocomplete_popup()
+            self._party_entry.focus_set()
+
+    def _close_autocomplete_popup(self) -> None:
+        if hasattr(self, "_autocomplete_popup") and self._autocomplete_popup.winfo_exists():
+            self._autocomplete_popup.destroy()
+
+    def _on_popup_focusout(self, event: Any) -> None:
+        self.after(100, self._check_focus_and_close)
+
+    def _check_focus_and_close(self) -> None:
+        if not hasattr(self, "_autocomplete_popup") or not self._autocomplete_popup.winfo_exists():
+            return
+        focus = self.focus_get()
+        if focus not in (self._party_entry, self._autocomplete_list):
+            self._close_autocomplete_popup()
+
+    def _autocomplete(self, event: Any) -> None:
+        if event.keysym in ("Down", "Up", "Return", "Escape", "Tab"):
+            if event.keysym == "Down" and hasattr(self, "_autocomplete_popup") and self._autocomplete_popup.winfo_exists():
+                self._autocomplete_list.focus_set()
+                if self._autocomplete_list.size() > 0:
+                    self._autocomplete_list.selection_clear(0, "end")
+                    self._autocomplete_list.selection_set(0)
+                    self._autocomplete_list.activate(0)
+            return
+
+        txt = self._pname.get().strip()
+        if not txt:
+            self._close_autocomplete_popup()
+            return
+
+        rows = db.lookup_party(self.app.db, txt)
+        if not rows:
+            self._close_autocomplete_popup()
+            return
+
+        if not hasattr(self, "_autocomplete_popup") or not self._autocomplete_popup.winfo_exists():
+            self._autocomplete_popup = tk.Toplevel(self)
+            self._autocomplete_popup.wm_overrideredirect(True)
+            self._autocomplete_list = tk.Listbox(
+                self._autocomplete_popup, font=FONT_MAIN,
+                bg=WH, fg="#000000", bd=1, relief="solid",
+                selectbackground="#90EE90", selectforeground="black"
+            )
+            self._autocomplete_list.pack(fill="both", expand=True)
+            self._autocomplete_list.bind("<Double-Button-1>", self._on_popup_select)
+            self._autocomplete_list.bind("<Return>", self._on_popup_select)
+            self._autocomplete_list.bind("<Escape>", lambda e: self._close_autocomplete_popup())
+            self._autocomplete_list.bind("<FocusOut>", self._on_popup_focusout)
+
+        self._autocomplete_list.delete(0, "end")
+        self._autocomplete_data = rows
+        for row in rows:
+            self._autocomplete_list.insert("end", row["Party"])
+
+        self.update_idletasks()
+        x = self._party_entry.winfo_rootx()
+        y = self._party_entry.winfo_rooty() + self._party_entry.winfo_height()
+        w = self._party_entry.winfo_width()
+        h = min(150, 20 * len(rows) + 5)
+        self._autocomplete_popup.wm_geometry(f"{w}x{h}+{x}+{y}")
+        self._autocomplete_popup.lift()
 
     def _on_party_focusout(self, _event: Any) -> None:
-        self._autocomplete(_event)
+        self.after(100, self._check_focus_and_close)
         self._autosave_party()
 
     def _on_gst_keyrelease(self, _event: Any) -> None:
@@ -909,6 +1028,7 @@ class EntryFormBase(tk.Toplevel):
         self._sgst_v.set(fmt_amt(result["sgst"]))
         self._igst_v.set(fmt_amt(result["igst"]))
         self._total.set(fmt_amt(result["total"]))
+        self._update_totals_grid()
 
     def _collect_rows(self) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
@@ -1019,7 +1139,15 @@ class EntryFormBase(tk.Toplevel):
                             f"Record {inwno} updated.", parent=self)
 
     def _load(self) -> None:
-        LoadDialog(self, self.app, self.TABLE, self._fill_from_rows)
+        num = simpledialog.askstring("InvSDP", f"Enter the {self.NO_LBL}", parent=self)
+        if not num:
+            return
+        num = num.strip()
+        rows = db.load_doc(self.app.db, self.TABLE, num)
+        if not rows:
+            messagebox.showwarning("Not Found", f"{self.TABLE} No. {num} not found or not saved.", parent=self)
+            return
+        self._fill_from_rows(rows)
 
     def _fill_from_rows(self, rows: list[sqlite3.Row]) -> None:
         if not rows:
@@ -1051,6 +1179,7 @@ class EntryFormBase(tk.Toplevel):
             rv["qty"].set(str(row["qty"]))
             rv["amt"].set(fmt_amt(to_float(row["AMT"])))
         self._fill_extra_fields(r0)
+        self._calc_totals()
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
         """Subclasses fill their extra fields from loaded row."""
@@ -1105,9 +1234,9 @@ class QuotationForm(EntryFormBase):
         return [
             ("&New",               self._new_record,    BTN_BG),
             ("&Save",              self._save,          "#90EE90"),
-            ("Print Proforma",     self._print_proforma, BTN_BG),
             ("Print Quotation",    self._print_quot,    BTN_BG),
-            ("&Load",              self._load,          BTN_BG),
+            ("Print Proforma Invoice", self._print_proforma, BTN_BG),
+            ("Load Quotation",     self._load,          BTN_BG),
             ("&Update",            self._update,        BTN_BG),
             ("&Delete",            self._delete,        "#FFB6C1"),
             ("Email",              self._email,         BTN_BG),
@@ -1136,32 +1265,82 @@ class DCForm(EntryFormBase):
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._goods_value = tk.StringVar()
-        lbl(parent, "Goods Value (opt.)").grid(row=5, column=0, sticky="e", padx=3, pady=2)
-        ent(parent, self._goods_value, width=20).grid(row=5, column=1, columnspan=3,
+        self._inward_ref_num = ""
+        self._inward_ref_date = ""
+        lbl(parent, "Your D.Slip. No.").grid(row=5, column=0, sticky="e", padx=3, pady=2)
+        ent(parent, self._goods_value, width=40).grid(row=5, column=1, columnspan=5,
                                                        sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
-        return {"GOODS_VALUE": self._goods_value.get().strip()}
+        return {
+            "GOODS_VALUE": self._goods_value.get().strip(),
+            "sdidcno":     getattr(self, "_inward_ref_num", ""),
+            "sdidt":       getattr(self, "_inward_ref_date", ""),
+        }
 
     def _reset_extra_fields(self) -> None:
         self._goods_value.set("")
+        self._inward_ref_num = ""
+        self._inward_ref_date = ""
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
         try:
             self._goods_value.set(row["GOODS_VALUE"] or "")
         except (IndexError, KeyError):
             pass
+        try:
+            self._inward_ref_num = row["sdidcno"] or ""
+            self._inward_ref_date = row["sdidt"] or ""
+        except (IndexError, KeyError):
+            self._inward_ref_num = ""
+            self._inward_ref_date = ""
 
     def _buttons(self):
         return [
-            ("&New",     self._new_record, BTN_BG),
-            ("&Save",    self._save,       "#90EE90"),
-            ("Print DC", self._print_dc,  BTN_BG),
-            ("&Load",    self._load,       BTN_BG),
-            ("&Update",  self._update,     BTN_BG),
-            ("&Delete",  self._delete,     "#FFB6C1"),
-            ("&Close",   self.destroy,     BTN_BG),
+            ("&New",               self._new_record,    BTN_BG),
+            ("Load Inward",        self._load_inward,   BTN_BG),
+            ("Load DC",            self._load,          BTN_BG),
+            ("&Save",              self._save,          "#90EE90"),
+            ("Print DC",           self._print_dc,      BTN_BG),
+            ("&Delete",            self._delete,        "#FFB6C1"),
+            ("Email",              self._email,         BTN_BG),
+            ("&Close",             self.destroy,        BTN_BG),
         ]
+
+    def _load_inward(self) -> None:
+        num = simpledialog.askstring("InvSDP", "Enter the Item Inward No.", parent=self)
+        if not num:
+            return
+        num = num.strip()
+        rows = db.load_doc(self.app.db, "ItemInward", num)
+        if not rows:
+            messagebox.showwarning("Not Found", f"Inward No. {num} not found.", parent=self)
+            return
+
+        self._pname.set(rows[0]["pname"] or "")
+        self._padd.set(rows[0]["padd"] or "")
+        self._gstno.set(normalize_gstno(rows[0]["PGSTNO"] or ""))
+        self._sub.set(rows[0]["SUB"] or "")
+        self._ref.set(f"Inw Ref: {num}")
+        self._inward_ref_num = num
+        self._inward_ref_date = rows[0]["inwdate"] or ""
+
+        for rv in self._grid_vars:
+            for k in ("part", "od", "mic", "rate", "qty", "amt"):
+                rv[k].set("")
+            rv["qty"].set("1")
+
+        for i, row in enumerate(rows[:self.N_ROWS]):
+            rv = self._grid_vars[i]
+            rv["part"].set(str(row["part"]))
+            rv["od"].set(str(row["od"]) if row["od"] else "")
+            rv["mic"].set(str(row["guage"]) if row["guage"] else "")
+            rv["rate"].set("")
+            rv["qty"].set(str(row["qty"]))
+            rv["amt"].set("")
+
+        self._calc_totals()
+        messagebox.showinfo("Loaded", f"Inward {num} loaded (non-financial).", parent=self)
 
     def _print_dc(self) -> None:
         d = self._get_print_data()
@@ -1182,6 +1361,8 @@ class BillForm(EntryFormBase):
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._pdc   = tk.StringVar()
         self._sdpdc = tk.StringVar()
+        self._inward_ref_num = ""
+        self._inward_ref_date = ""
         lbl(parent, "PDC").grid(row=5, column=0, sticky="e", padx=3, pady=2)
         ent(parent, self._pdc, width=30).grid(row=5, column=1, columnspan=4,
                                                sticky="w", padx=3)
@@ -1191,13 +1372,17 @@ class BillForm(EntryFormBase):
 
     def _extra_header_fields(self) -> dict[str, Any]:
         return {
-            "PDC":   self._pdc.get().strip(),
-            "SDPDC": self._sdpdc.get().strip(),
+            "PDC":     self._pdc.get().strip(),
+            "SDPDC":   self._sdpdc.get().strip(),
+            "sdidcno": getattr(self, "_inward_ref_num", ""),
+            "sdidt":   getattr(self, "_inward_ref_date", ""),
         }
 
     def _reset_extra_fields(self) -> None:
         self._pdc.set("")
         self._sdpdc.set("")
+        self._inward_ref_num = ""
+        self._inward_ref_date = ""
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
         try:
@@ -1205,19 +1390,125 @@ class BillForm(EntryFormBase):
             self._sdpdc.set(row["SDPDC"] or "")
         except (IndexError, KeyError):
             pass
+        try:
+            self._inward_ref_num = row["sdidcno"] or ""
+            self._inward_ref_date = row["sdidt"] or ""
+        except (IndexError, KeyError):
+            self._inward_ref_num = ""
+            self._inward_ref_date = ""
 
     def _buttons(self):
         return [
-            ("&New",         self._new_record, BTN_BG),
-            ("&Save",        self._save,       "#90EE90"),
-            ("Print Bill",   self._print_bill, BTN_BG),
-            ("Print Proforma", self._print_pf, BTN_BG),
-            ("&Load",        self._load,       BTN_BG),
-            ("&Update",      self._update,     BTN_BG),
-            ("&Delete",      self._delete,     "#FFB6C1"),
-            ("Email",        self._email,      BTN_BG),
-            ("&Close",       self.destroy,     BTN_BG),
+            ("&New",               self._new_record,    BTN_BG),
+            ("Load DC",            self._load_dc,       BTN_BG),
+            ("Load Proforma Invoice", self._load_proforma_invoice, BTN_BG),
+            ("&Save",              self._save,          "#90EE90"),
+            ("Print Bill",         self._print_bill,    BTN_BG),
+            ("Load Bill",          self._load,          BTN_BG),
+            ("&Update",            self._update,        BTN_BG),
+            ("&Delete",            self._delete,        "#FFB6C1"),
+            ("Email",              self._email,         BTN_BG),
+            ("&Close",             self.destroy,        BTN_BG),
         ]
+
+    def _load_dc(self) -> None:
+        num = simpledialog.askstring("InvSDP", "Enter the D.C No.", parent=self)
+        if not num:
+            return
+        num = num.strip()
+        dc_rows = db.load_doc(self.app.db, "DC", num)
+        if not dc_rows:
+            messagebox.showwarning("Not Found", f"DC No. {num} not found.", parent=self)
+            return
+
+        r0 = dc_rows[0]
+        self._pname.set(r0["pname"] or "")
+        self._padd.set(r0["padd"] or "")
+        self._gstno.set(normalize_gstno(r0["PGSTNO"] or ""))
+        self._sub.set(r0["SUB"] or "")
+        self._ref.set(f"DC Ref: {num}")
+
+        if hasattr(self, "_sdpdc"):
+            self._sdpdc.set(num)
+
+        inward_no = r0.get("sdidcno", "")
+        self._inward_ref_num = inward_no
+        self._inward_ref_date = r0.get("sdidt", "")
+        inw_rates = {}
+        if inward_no:
+            inw_rows = db.load_doc(self.app.db, "ItemInward", inward_no)
+            for row in inw_rows:
+                part = row["part"].strip()
+                inw_rates[part] = {
+                    "rate": to_float(row["rate"]),
+                    "mic": str(row["guage"]) if row["guage"] else "",
+                    "od": str(row["od"]) if row["od"] else "",
+                }
+
+        for rv in self._grid_vars:
+            for k in ("part", "od", "mic", "rate", "qty", "amt"):
+                rv[k].set("")
+            rv["qty"].set("1")
+
+        for i, row in enumerate(dc_rows[:self.N_ROWS]):
+            rv = self._grid_vars[i]
+            part = str(row["part"])
+            rv["part"].set(part)
+            rv["qty"].set(str(row["qty"]))
+
+            part_key = part.strip()
+            if part_key in inw_rates:
+                rv["rate"].set(fmt_amt(inw_rates[part_key]["rate"]))
+                rv["mic"].set(inw_rates[part_key]["mic"])
+                rv["od"].set(inw_rates[part_key]["od"])
+            else:
+                rv["rate"].set(fmt_amt(to_float(row.get("rate", 0))) if to_float(row.get("rate", 0)) else "")
+                rv["mic"].set(str(row.get("guage", "")) if row.get("guage") else "")
+                rv["od"].set(str(row.get("od", "")) if row.get("od") else "")
+
+            r = to_float(rv["rate"].get())
+            q = to_float(rv["qty"].get()) or 1
+            amt = round(r * q, 2)
+            rv["amt"].set(fmt_amt(amt) if amt else "")
+
+        self._calc_totals()
+        messagebox.showinfo("Loaded", f"DC {num} loaded successfully.", parent=self)
+
+    def _load_proforma_invoice(self) -> None:
+        num = simpledialog.askstring("InvSDP", "Enter the Quotation No.", parent=self)
+        if not num:
+            return
+        num = num.strip()
+        rows = db.load_doc(self.app.db, "Quotation", num)
+        if not rows:
+            messagebox.showwarning("Not Found", f"Proforma / Quotation No. {num} not found.", parent=self)
+            return
+
+        r0 = rows[0]
+        self._pname.set(r0["pname"] or "")
+        self._padd.set(r0["padd"] or "")
+        self._gstno.set(normalize_gstno(r0["PGSTNO"] or ""))
+        self._sub.set(r0["SUB"] or "")
+        self._ref.set(f"PF Ref: {num}")
+        self._inward_ref_num = num
+        self._inward_ref_date = r0["inwdate"] or ""
+
+        for rv in self._grid_vars:
+            for k in ("part", "od", "mic", "rate", "qty", "amt"):
+                rv[k].set("")
+            rv["qty"].set("1")
+
+        for i, row in enumerate(rows[:self.N_ROWS]):
+            rv = self._grid_vars[i]
+            rv["part"].set(str(row["part"]))
+            rv["od"].set(str(row["od"]) if row["od"] else "")
+            rv["mic"].set(str(row["guage"]) if row["guage"] else "")
+            rv["rate"].set(fmt_amt(to_float(row["rate"])))
+            rv["qty"].set(str(row["qty"]))
+            rv["amt"].set(fmt_amt(to_float(row["AMT"])))
+
+        self._calc_totals()
+        messagebox.showinfo("Loaded", f"Proforma Invoice {num} loaded successfully.", parent=self)
 
     def _print_bill(self) -> None:
         d = self._get_print_data()
@@ -1242,31 +1533,79 @@ class ItemInwardForm(EntryFormBase):
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._pdc = tk.StringVar()
-        lbl(parent, "PDC Ref").grid(row=5, column=0, sticky="e", padx=3, pady=2)
+        lbl(parent, "Your D.Slip. No.").grid(row=5, column=0, sticky="e", padx=3, pady=2)
         ent(parent, self._pdc, width=40).grid(row=5, column=1, columnspan=5,
                                                sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
-        return {"PDC": self._pdc.get().strip()}
+        return {
+            "PDC":     self._pdc.get().strip(),
+            "sdidcno": getattr(self, "_quot_ref_num", ""),
+            "sdidt":   getattr(self, "_quot_ref_date", ""),
+        }
 
     def _reset_extra_fields(self) -> None:
         self._pdc.set("")
+        self._quot_ref_num = ""
+        self._quot_ref_date = ""
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
         try:
             self._pdc.set(row["PDC"] or "")
         except (IndexError, KeyError):
             pass
+        try:
+            self._quot_ref_num = row["sdidcno"] or ""
+            self._quot_ref_date = row["sdidt"] or ""
+        except (IndexError, KeyError):
+            self._quot_ref_num = ""
+            self._quot_ref_date = ""
 
     def _buttons(self):
         return [
-            ("&New",    self._new_record, BTN_BG),
-            ("&Save",   self._save,       "#90EE90"),
-            ("&Load",   self._load,       BTN_BG),
-            ("&Update", self._update,     BTN_BG),
-            ("&Delete", self._delete,     "#FFB6C1"),
-            ("&Close",  self.destroy,     BTN_BG),
+            ("New/Cancel",         self._new_record,    BTN_BG),
+            ("Load Quotation",     self._load_quotation, BTN_BG),
+            ("Load Inward",        self._load,          BTN_BG),
+            ("&Save",              self._save,          "#90EE90"),
+            ("&Update",            self._update,        BTN_BG),
+            ("&Delete",            self._delete,        "#FFB6C1"),
+            ("&Close",             self.destroy,        BTN_BG),
         ]
+
+    def _load_quotation(self) -> None:
+        num = simpledialog.askstring("InvSDP", "Enter the Quotation No.", parent=self)
+        if not num:
+            return
+        num = num.strip()
+        rows = db.load_doc(self.app.db, "Quotation", num)
+        if not rows:
+            messagebox.showwarning("Not Found", f"Quotation No. {num} not found.", parent=self)
+            return
+
+        self._pname.set(rows[0]["pname"] or "")
+        self._padd.set(rows[0]["padd"] or "")
+        self._gstno.set(normalize_gstno(rows[0]["PGSTNO"] or ""))
+        self._sub.set(rows[0]["SUB"] or "")
+        self._ref.set(f"Quot Ref: {num}")
+        self._quot_ref_num = num
+        self._quot_ref_date = rows[0]["inwdate"] or ""
+
+        for rv in self._grid_vars:
+            for k in ("part", "od", "mic", "rate", "qty", "amt"):
+                rv[k].set("")
+            rv["qty"].set("1")
+
+        for i, row in enumerate(rows[:self.N_ROWS]):
+            rv = self._grid_vars[i]
+            rv["part"].set(str(row["part"]))
+            rv["od"].set(str(row["od"]) if row["od"] else "")
+            rv["mic"].set(str(row["guage"]) if row["guage"] else "")
+            rv["rate"].set(fmt_amt(to_float(row["rate"])))
+            rv["qty"].set(str(row["qty"]))
+            rv["amt"].set(fmt_amt(to_float(row["AMT"])))
+
+        self._calc_totals()
+        messagebox.showinfo("Loaded", f"Quotation {num} loaded successfully.", parent=self)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -19,39 +19,39 @@ from reportlab.platypus import (
     Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 
-from asp_utils import amount_words, fmt_amt
+from asp_utils import amount_words, fmt_amt, normalize_gstno
 
 PAGE_MARGIN = 3 * mm
 CONTENT_W = A4[0] - (2 * PAGE_MARGIN)
 THIN = 0.8
 BOX = 1.05
 
-S_DEITY   = ParagraphStyle("deity",   fontName="Times-Italic",  fontSize=9, alignment=TA_CENTER, leading=11)
+S_DEITY   = ParagraphStyle("deity",   fontName="Times-Italic",  fontSize=10, alignment=TA_CENTER, leading=12)
 S_CO_NAME = ParagraphStyle("coname",  fontName="Times-Bold",    fontSize=38, alignment=TA_CENTER, leading=41)
-S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=12, alignment=TA_CENTER, leading=14.5)
-S_SECTION = ParagraphStyle("section", fontName="Times-Bold",    fontSize=15, alignment=TA_CENTER, leading=17)
-S_NORMAL  = ParagraphStyle("normal",  fontName="Times-Roman",   fontSize=11, leading=13)
-S_SMALL   = ParagraphStyle("small",   fontName="Times-Roman",   fontSize=10.25, leading=12.25)
-S_BOLD    = ParagraphStyle("bold",    fontName="Times-Bold",    fontSize=12, leading=13.5)
-S_RIGHT   = ParagraphStyle("right",   fontName="Times-Roman",   fontSize=11, alignment=TA_RIGHT, leading=13)
-S_RIGHT_B = ParagraphStyle("rightb",  fontName="Times-Bold",    fontSize=11, alignment=TA_RIGHT, leading=13)
-S_CENTER  = ParagraphStyle("center",  fontName="Times-Roman",   fontSize=11, alignment=TA_CENTER, leading=13)
-S_SMALL_B = ParagraphStyle("smallb",  fontName="Times-Bold",    fontSize=10.5, leading=12.25)
+S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=12.5, alignment=TA_CENTER, leading=15)
+S_SECTION = ParagraphStyle("section", fontName="Times-Bold",    fontSize=20, alignment=TA_CENTER, leading=23)
+S_NORMAL  = ParagraphStyle("normal",  fontName="Times-Roman",   fontSize=13.5, leading=16.5)
+S_SMALL   = ParagraphStyle("small",   fontName="Times-Roman",   fontSize=12, leading=15)
+S_BOLD    = ParagraphStyle("bold",    fontName="Times-Bold",    fontSize=14, leading=17)
+S_RIGHT   = ParagraphStyle("right",   fontName="Times-Roman",   fontSize=13.5, alignment=TA_RIGHT, leading=16.5)
+S_RIGHT_B = ParagraphStyle("rightb",  fontName="Times-Bold",    fontSize=13.5, alignment=TA_RIGHT, leading=16.5)
+S_CENTER  = ParagraphStyle("center",  fontName="Times-Roman",   fontSize=13.5, alignment=TA_CENTER, leading=16.5)
+S_SMALL_B = ParagraphStyle("smallb",  fontName="Times-Bold",    fontSize=13, leading=16)
 
 # Proforma-specific styles (slightly larger than regular bill)
-S_PF_NORMAL = ParagraphStyle("pf_normal", fontName="Times-Roman", fontSize=12, leading=13.8)
-S_PF_BOLD   = ParagraphStyle("pf_bold",   fontName="Times-Bold",  fontSize=12, leading=13.8)
-S_PF_RIGHT  = ParagraphStyle("pf_right",  fontName="Times-Roman", fontSize=12, alignment=TA_RIGHT, leading=13.8)
-S_PF_RIGHT_B= ParagraphStyle("pf_rightb", fontName="Times-Bold",  fontSize=12, alignment=TA_RIGHT, leading=13.8)
-S_PF_CENTER = ParagraphStyle("pf_center", fontName="Times-Roman", fontSize=12, alignment=TA_CENTER, leading=13.8)
-S_PF_SMALL  = ParagraphStyle("pf_small",  fontName="Times-Roman", fontSize=11, leading=12.8)
-S_PF_SMALL_B= ParagraphStyle("pf_smallb", fontName="Times-Bold",  fontSize=11, leading=12.8)
-S_PF_SECTION= ParagraphStyle("pf_sect",   fontName="Times-Bold",  fontSize=17, alignment=TA_CENTER, leading=19)
-S_DC_REF    = ParagraphStyle("dc_ref",    fontName="Times-Bold",  fontSize=11, leading=13)
-S_TOT_LBL   = ParagraphStyle("totlbl",    fontName="Times-Roman", fontSize=10.5, leading=12)
-S_TOT_VAL   = ParagraphStyle("totval",    fontName="Times-Roman", fontSize=10.5, alignment=TA_RIGHT, leading=12)
-S_TOT_B_LBL = ParagraphStyle("totblbl",   fontName="Times-Bold",  fontSize=11, leading=12.5)
-S_TOT_B_VAL = ParagraphStyle("totbval",   fontName="Times-Bold",  fontSize=11, alignment=TA_RIGHT, leading=12.5)
+S_PF_NORMAL = ParagraphStyle("pf_normal", fontName="Times-Roman", fontSize=14.5, leading=17.5)
+S_PF_BOLD   = ParagraphStyle("pf_bold",   fontName="Times-Bold",  fontSize=15, leading=18)
+S_PF_RIGHT  = ParagraphStyle("pf_right",  fontName="Times-Roman", fontSize=14.5, alignment=TA_RIGHT, leading=17.5)
+S_PF_RIGHT_B= ParagraphStyle("pf_rightb", fontName="Times-Bold",  fontSize=14.5, alignment=TA_RIGHT, leading=17.5)
+S_PF_CENTER = ParagraphStyle("pf_center", fontName="Times-Roman", fontSize=14.5, alignment=TA_CENTER, leading=17.5)
+S_PF_SMALL  = ParagraphStyle("pf_small",  fontName="Times-Roman", fontSize=13.5, leading=16.5)
+S_PF_SMALL_B= ParagraphStyle("pf_smallb", fontName="Times-Bold",  fontSize=13.5, leading=16.5)
+S_PF_SECTION= ParagraphStyle("pf_sect",   fontName="Times-Bold",  fontSize=22, alignment=TA_CENTER, leading=25)
+S_DC_REF    = ParagraphStyle("dc_ref",    fontName="Times-Bold",  fontSize=13, leading=16)
+S_TOT_LBL   = ParagraphStyle("totlbl",    fontName="Times-Roman", fontSize=13, leading=16)
+S_TOT_VAL   = ParagraphStyle("totval",    fontName="Times-Roman", fontSize=13, alignment=TA_RIGHT, leading=16)
+S_TOT_B_LBL = ParagraphStyle("totblbl",   fontName="Times-Bold",  fontSize=14, leading=17)
+S_TOT_B_VAL = ParagraphStyle("totbval",   fontName="Times-Bold",  fontSize=14, alignment=TA_RIGHT, leading=17)
 
 COMPANY: dict[str, str] = {
     "name":  "Adhwaitha Sri Plating",
@@ -59,7 +59,7 @@ COMPANY: dict[str, str] = {
     "addr1": "Fac.: SF.No.233, Plot No.: C 26 , Electro Plating Industrial Park,",
     "addr2": "D.Karisalkulam, Manamadurai Taluk ,Sivagangai District.",
     "addr3": "Tamilnadu, 630411. Mobile No. 63693 73649, 99944 43530",
-    "addr4": "Off. : Old No.85 J/2, New No.76, Arunachalam Street, S.S.Colony North Gate,Madurai-16.",
+    "addr4": "Off.: Old No.86 J/2, New No.76, Arunaohalam Street, S.S.Colony North Gate,Madurai-18.",
     "gstno": "33ADZPA3791Q2ZP",
     "state": "33",
     "hsn":   "75089010",
@@ -106,44 +106,51 @@ def _company_header(story: list) -> None:
 
 def _party_block(story: list, data: dict[str, Any],
                  doc_type: str, no_label: str) -> None:
-    section = Table([[
-        Paragraph(f"<b>{doc_type}</b>", S_SECTION),
-        Paragraph("ORIGINAL COPY" if doc_type == "JOB WORK BILL" else "", S_CENTER),
-    ]], colWidths=[CONTENT_W * 0.69, CONTENT_W * 0.31])
-    section.setStyle(TableStyle([
-        ("LINEABOVE",     (0, 0), (-1, 0), BOX, colors.black),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-    ]))
-    story.append(section)
+    story.append(Spacer(1, 1 * mm))
+    story.append(Paragraph(f"<b>{doc_type}</b>", S_SECTION))
     story.append(Spacer(1, 1.2 * mm))
+    if doc_type == "JOB WORK BILL":
+        story.append(Paragraph("ORIGINAL COPY", S_CENTER))
+        story.append(Spacer(1, 1.2 * mm))
 
-    date_no = (f"Date : <b>{data.get('date','')}</b><br/>"
-               f"{no_label} : <b>{data.get('no','')}</b>")
-    hdr = Table([[
+    cust_details = [
         Paragraph("Customer Name and Address", S_SMALL_B),
-        Paragraph(date_no, S_RIGHT),
-    ]], colWidths=[CONTENT_W * 0.65, CONTENT_W * 0.35])
-    hdr.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 1),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 1),
-    ]))
-    story.append(hdr)
-    story.append(Spacer(1, 0.8 * mm))
-
-    story.append(Paragraph(f"<b>{data.get('pname','')}</b>", S_BOLD))
+        Spacer(1, 0.8 * mm),
+        Paragraph(f"<b>{data.get('pname','')}</b>", S_BOLD),
+    ]
     if data.get("padd"):
-        story.append(Paragraph(data["padd"], S_SMALL))
+        cust_details.append(Paragraph(data["padd"], S_NORMAL))
     if data.get("gstno"):
-        story.append(Paragraph(f"GST No. : {data['gstno']}", S_SMALL))
+        cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_NORMAL))
     if data.get("sdpdc"):
-        story.append(Paragraph(f"ASP D.C. No. : {data['sdpdc']}", S_DC_REF))
+        cust_details.append(Paragraph(f"ASP D.C. No. : {data['sdpdc']}", S_DC_REF))
     if data.get("ref"):
-        story.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_SMALL))
+        cust_details.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_NORMAL))
     if data.get("sub"):
-        story.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_SMALL))
+        cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_NORMAL))
+
+    meta_rows = [
+        [Paragraph(f"{no_label}", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_NORMAL)],
+        [Paragraph("Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_NORMAL)],
+    ]
+    meta_table = Table(meta_rows, colWidths=[28 * mm, 38 * mm])
+    meta_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
+    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
+    party_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
+        ("LINEBELOW", (0, 0), (-1, -1), BOX, colors.black),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(party_table)
     story.append(Spacer(1, 1.4 * mm))
 
 
@@ -170,12 +177,13 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
     while len(data) < 12:
         data.append([Paragraph("", S_NORMAL)] * 6)
 
-    row_heights = [10.5 * mm] + [11.4 * mm] * (len(data) - 1)
+    row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 10.8),
+        ("FONTSIZE",      (0, 0), (-1, -1), 13.5),
         ("BOX",           (0, 0), (-1, -1), BOX, colors.black),
-        ("GRID",          (0, 0), (-1, -1), THIN, colors.black),
+        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),
+        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 2.2),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
@@ -203,12 +211,13 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
     while len(data) < 15:
         data.append([Paragraph("", S_NORMAL)] * 3)
 
-    row_heights = [10.5 * mm] + [9.6 * mm] * (len(data) - 1)
+    row_heights = [12.5 * mm] + [11.5 * mm] * (len(data) - 1)
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 10.8),
+        ("FONTSIZE",      (0, 0), (-1, -1), 13.5),
         ("BOX",           (0, 0), (-1, -1), BOX, colors.black),
-        ("GRID",          (0, 0), (-1, -1), THIN, colors.black),
+        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),
+        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 2.1),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2.1),
@@ -241,12 +250,13 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
     while len(data) < 12:
         data.append([Paragraph("", S_PF_NORMAL)] * 6)
 
-    row_heights = [10.5 * mm] + [11.4 * mm] * (len(data) - 1)
+    row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 11.2),
+        ("FONTSIZE",      (0, 0), (-1, -1), 14.5),
         ("BOX",           (0, 0), (-1, -1), BOX, colors.black),
-        ("GRID",          (0, 0), (-1, -1), THIN, colors.black),
+        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),
+        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 2.2),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
@@ -273,6 +283,10 @@ def _totals_block(story: list, data: dict[str, Any],
     bold_label_style = S_TOT_B_LBL if small_bold is S_SMALL_B else small_bold
     bold_value_style = S_TOT_B_VAL if right_bold is S_RIGHT_B else right_bold
 
+    gstno = normalize_gstno(data.get("gstno", ""))
+    state_code = gstno[:2]
+    intrastate = (state_code == "33") or (not gstno)
+
     gst_rows = [
         [Paragraph("Taxable Amount :", label_style),
          Paragraph(fmt_amt(tamt), value_style)],
@@ -282,9 +296,10 @@ def _totals_block(story: list, data: dict[str, Any],
          Paragraph(fmt_amt(cgst) if cgst else "", value_style)],
         [Paragraph("SGST @ 9% :", label_style),
          Paragraph(fmt_amt(sgst) if sgst else "", value_style)],
-        [Paragraph("<b>Grand Total</b>", bold_label_style),
-         Paragraph(f"<b>{fmt_amt(total)}</b>", bold_value_style)],
     ]
+
+    gst_rows.append([Paragraph("<b>Grand Total</b>", bold_label_style),
+                     Paragraph(f"<b>{fmt_amt(total)}</b>", bold_value_style)])
     right_t = Table(gst_rows, colWidths=[58 * mm, 30 * mm])
     right_t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 10.5),
@@ -351,46 +366,51 @@ def _build_story_dc(data: dict[str, Any]) -> list:
     story: list = []
     _company_header(story)
 
-    section = Table([[
-        Paragraph("<b>DELIVERY CHALLAN</b>", S_SECTION),
-        Paragraph("ORIGINAL COPY", S_CENTER),
-    ]], colWidths=[CONTENT_W * 0.69, CONTENT_W * 0.31])
-    section.setStyle(TableStyle([
-        ("LINEABOVE",     (0, 0), (-1, 0), BOX, colors.black),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-    ]))
-    story.append(section)
-    story.append(Spacer(1, 1.1 * mm))
-
-    date_no = (f"DC Date : <b>{data.get('date','')}</b><br/>"
-               f"DC No. : <b>{data.get('no','')}</b>")
-    hdr = Table([[
-        Paragraph("To", S_SMALL_B),
-        Paragraph(date_no, S_RIGHT),
-    ]], colWidths=[CONTENT_W * 0.65, CONTENT_W * 0.35])
-    hdr.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 1),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 1),
-    ]))
-    story.append(hdr)
-    story.append(Spacer(1, 0.8 * mm))
-
-    story.append(Paragraph(f"<b>{data.get('pname','')}</b>", S_BOLD))
-    if data.get("padd"):
-        story.append(Paragraph(data["padd"], S_SMALL))
-    if data.get("gstno"):
-        story.append(Paragraph(f"GST No. : {data['gstno']}", S_SMALL))
-    if data.get("ref"):
-        story.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_SMALL))
-    if data.get("sub"):
-        story.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_SMALL))
-    if data.get("goods_value"):
-        story.append(Paragraph(f"Goods Value :&nbsp;&nbsp; {data['goods_value']}", S_SMALL))
-
+    story.append(Spacer(1, 1 * mm))
+    story.append(Paragraph("<b>DELIVERY CHALLAN</b>", S_SECTION))
     story.append(Spacer(1, 1.2 * mm))
+    story.append(Paragraph("ORIGINAL COPY", S_CENTER))
+    story.append(Spacer(1, 1.2 * mm))
+
+    cust_details = [
+        Paragraph("To", S_SMALL_B),
+        Spacer(1, 0.8 * mm),
+        Paragraph(f"<b>{data.get('pname','')}</b>", S_BOLD),
+    ]
+    if data.get("padd"):
+        cust_details.append(Paragraph(data["padd"], S_NORMAL))
+    if data.get("gstno"):
+        cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_NORMAL))
+    if data.get("ref"):
+        cust_details.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_NORMAL))
+    if data.get("sub"):
+        cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_NORMAL))
+    if data.get("goods_value"):
+        cust_details.append(Paragraph(f"Goods Value :&nbsp;&nbsp; <b>{data['goods_value']}</b>", S_NORMAL))
+
+    meta_rows = [
+        [Paragraph("DC No.", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_NORMAL)],
+        [Paragraph("DC Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_NORMAL)],
+    ]
+    meta_table = Table(meta_rows, colWidths=[28 * mm, 38 * mm])
+    meta_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
+    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
+    party_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
+        ("LINEBELOW", (0, 0), (-1, -1), BOX, colors.black),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(party_table)
+    story.append(Spacer(1, 1.4 * mm))
     story.append(_line_items_table_dc(data.get("rows", [])))
     story.append(Spacer(1, 1.2 * mm))
     story.append(Paragraph("Only Job Work Not For Sale", S_BOLD))
@@ -403,34 +423,47 @@ def _build_story_proforma(data: dict[str, Any]) -> list:
     story: list = []
     _company_header(story)
 
-    story.append(Paragraph("<b>PROFORMA INVOICE</b>", S_PF_SECTION))
     story.append(Spacer(1, 1 * mm))
-
-    date_no = (f"Date : <b>{data.get('date','')}</b><br/>"
-               f"I No. : <b>{data.get('no','')}</b>")
-    hdr = Table([[
-        Paragraph("To", S_PF_SMALL_B),
-        Paragraph(date_no, S_PF_RIGHT),
-    ]], colWidths=[CONTENT_W * 0.65, CONTENT_W * 0.35])
-    hdr.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 1),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 1),
-    ]))
-    story.append(hdr)
-    story.append(Spacer(1, 0.8 * mm))
-
-    story.append(Paragraph(f"<b>{data.get('pname','')}</b>", S_PF_BOLD))
-    if data.get("padd"):
-        story.append(Paragraph(data["padd"], S_PF_SMALL))
-    if data.get("gstno"):
-        story.append(Paragraph(f"GST No. : {data['gstno']}", S_PF_SMALL))
-    if data.get("ref"):
-        story.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_PF_SMALL))
-    if data.get("sub"):
-        story.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_PF_SMALL))
-
+    story.append(Paragraph("<b>PROFORMA INVOICE</b>", S_PF_SECTION))
     story.append(Spacer(1, 1.2 * mm))
+
+    cust_details = [
+        Paragraph("To", S_PF_SMALL_B),
+        Spacer(1, 0.8 * mm),
+        Paragraph(f"<b>{data.get('pname','')}</b>", S_PF_BOLD),
+    ]
+    if data.get("padd"):
+        cust_details.append(Paragraph(data["padd"], S_PF_NORMAL))
+    if data.get("gstno"):
+        cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_PF_NORMAL))
+    if data.get("ref"):
+        cust_details.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_PF_NORMAL))
+    if data.get("sub"):
+        cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_PF_NORMAL))
+
+    meta_rows = [
+        [Paragraph("Proforma No.", S_PF_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_PF_NORMAL)],
+        [Paragraph("Date", S_PF_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_PF_NORMAL)],
+    ]
+    meta_table = Table(meta_rows, colWidths=[32 * mm, 38 * mm])
+    meta_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
+    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
+    party_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
+        ("LINEBELOW", (0, 0), (-1, -1), BOX, colors.black),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(party_table)
+    story.append(Spacer(1, 1.4 * mm))
     story.append(_line_items_table_proforma(data.get("rows", [])))
     story.append(Spacer(1, 0.8 * mm))
 
