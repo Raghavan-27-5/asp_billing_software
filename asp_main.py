@@ -28,12 +28,12 @@ FORM_BG  = "#0044BB"
 LABEL_FG = "#FFFFFF"
 GRID_HDR = "#003080"
 
-FONT_MAIN  = ("Times New Roman", 10)
-FONT_BOLD  = ("Times New Roman", 10, "bold")
-FONT_TITLE = ("Times New Roman", 18, "bold")
-FONT_SMALL = ("Times New Roman", 8)
-FONT_BTN   = ("Times New Roman", 9, "bold")
-FONT_LBL   = ("Times New Roman", 9)
+FONT_MAIN  = ("Times New Roman", 13)
+FONT_BOLD  = ("Times New Roman", 13, "bold")
+FONT_TITLE = ("Times New Roman", 24, "bold")
+FONT_SMALL = ("Times New Roman", 11)
+FONT_BTN   = ("Times New Roman", 11, "bold")
+FONT_LBL   = ("Times New Roman", 12)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -55,7 +55,9 @@ def ent(parent: tk.Widget, var: Optional[tk.Variable] = None,
     return tk.Entry(
         parent, textvariable=var, width=width,
         bg=WH, fg="#000000", font=FONT_MAIN,
-        relief="sunken", bd=1, **kw,
+        relief="flat", bd=0,
+        highlightbackground="#999999", highlightthickness=1,
+        **kw,
     )
 
 
@@ -518,7 +520,7 @@ class LoadDialog(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text=f"Select — {self.table}",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         sf = tk.Frame(self, bg=FORM_BG)
         sf.pack(fill="x", padx=8, pady=4)
@@ -575,6 +577,7 @@ class EntryFormBase(tk.Toplevel):
     AUTO_FIELD:  str = "Quo"
     NO_LBL:      str = "No."
     N_ROWS:      int = 8
+    SEPARATE_DATE_ROW: bool = False
 
     def __init__(self, master: tk.Widget, app: "App") -> None:
         super().__init__(master)
@@ -603,13 +606,16 @@ class EntryFormBase(tk.Toplevel):
         # Title bar
         hdr = tk.Frame(main, bg=HDR_BG)
         hdr.grid(row=0, column=0, sticky="ew")
-        tk.Label(hdr, text=self.TITLE, bg=HDR_BG, fg=WH,
-                 font=FONT_BOLD).pack(side="left", padx=8, pady=4)
+        hdr.grid_columnconfigure(1, weight=1)
         self._fy_no = tk.StringVar()
-        ent(hdr, self._fy_no, width=16,
-            state="readonly").pack(side="right", padx=8, pady=4)
         tk.Label(hdr, text="FY No.:", bg=HDR_BG, fg=WH,
-                 font=FONT_SMALL).pack(side="right")
+                 font=FONT_SMALL).grid(row=0, column=0, padx=(8, 2), pady=4)
+        ent(hdr, self._fy_no, width=16,
+            state="readonly").grid(row=0, column=0, padx=(70, 0), pady=4)
+        tk.Label(hdr, text=self.TITLE, bg=HDR_BG, fg=WH,
+                 font=FONT_TITLE).grid(row=0, column=1, pady=6)
+        # right spacer to balance centering
+        tk.Label(hdr, text="", bg=HDR_BG, width=12).grid(row=0, column=2)
 
         # Header fields
         hf = tk.Frame(main, bg=FORM_BG)
@@ -621,16 +627,26 @@ class EntryFormBase(tk.Toplevel):
 
         self._no_var   = tk.StringVar()
         self._date_var = tk.StringVar(value=today_str())
-        lbl(hf, self.NO_LBL).grid(row=0, column=0, sticky="e", padx=3, pady=2)
-        ent(hf, self._no_var, width=10).grid(row=0, column=1, sticky="w", padx=3, pady=2)
-        lbl(hf, "Date").grid(row=0, column=8, sticky="e", padx=3)
-        ent(hf, self._date_var, width=13).grid(row=0, column=9, sticky="w", padx=3)
+        if self.SEPARATE_DATE_ROW:
+            # DC-style: No. on row 0, Date on row 1, well separated
+            lbl(hf, self.NO_LBL, font=FONT_BOLD).grid(row=0, column=0, sticky="e", padx=6, pady=4)
+            ent(hf, self._no_var, width=14).grid(row=0, column=1, columnspan=2, sticky="w", padx=6, pady=4)
+            lbl(hf, "Date", font=FONT_BOLD).grid(row=1, column=0, sticky="e", padx=6, pady=4)
+            ent(hf, self._date_var, width=14).grid(row=1, column=1, columnspan=2, sticky="w", padx=6, pady=4)
+            self._hdr_row_offset = 2  # subsequent rows shift down
+        else:
+            lbl(hf, self.NO_LBL).grid(row=0, column=0, sticky="e", padx=3, pady=2)
+            ent(hf, self._no_var, width=10).grid(row=0, column=1, sticky="w", padx=3, pady=2)
+            lbl(hf, "Date").grid(row=0, column=8, sticky="e", padx=3)
+            ent(hf, self._date_var, width=13).grid(row=0, column=9, sticky="w", padx=3)
+            self._hdr_row_offset = 1
 
+        ro = self._hdr_row_offset  # row offset
         self._pname = tk.StringVar()
         self._padd  = tk.StringVar()
-        lbl(hf, "To").grid(row=1, column=0, sticky="ne", padx=3, pady=2)
+        lbl(hf, "To").grid(row=ro, column=0, sticky="ne", padx=3, pady=2)
         pe = ent(hf, self._pname, width=58)
-        pe.grid(row=1, column=1, columnspan=8, sticky="ew", padx=3, pady=2)
+        pe.grid(row=ro, column=1, columnspan=8, sticky="ew", padx=3, pady=2)
         self._party_entry = pe
         pe.bind("<FocusOut>", self._on_party_focusout)
         pe.bind("<KeyRelease>", self._autocomplete)
@@ -638,26 +654,26 @@ class EntryFormBase(tk.Toplevel):
         pe.bind("<Escape>", lambda e: self._close_autocomplete_popup())
 
         self._gstno = tk.StringVar()
-        ent(hf, self._padd, width=46).grid(row=2, column=1, columnspan=5,
+        ent(hf, self._padd, width=46).grid(row=ro+1, column=1, columnspan=5,
                                             sticky="ew", padx=3, pady=2)
-        lbl(hf, "GST No.").grid(row=2, column=6, sticky="e", padx=3)
+        lbl(hf, "GST No.").grid(row=ro+1, column=6, sticky="e", padx=3)
         gst_entry = ent(hf, self._gstno, width=18)
-        gst_entry.grid(row=2, column=7, columnspan=2, sticky="w", padx=3)
+        gst_entry.grid(row=ro+1, column=7, columnspan=2, sticky="w", padx=3)
         gst_entry.bind("<KeyRelease>", self._on_gst_keyrelease)
         gst_entry.bind("<FocusOut>",   self._on_gst_focusout)
         btn(hf, "Save Customer", self._save_customer, width=12).grid(
-            row=2, column=9, sticky="w", padx=3
+            row=ro+1, column=9, sticky="w", padx=3
         )
 
         self._sub = tk.StringVar(
             value="Hard Chrome Plating and Diamond Polishing")
-        lbl(hf, "Sub").grid(row=3, column=0, sticky="e", padx=3, pady=2)
-        ent(hf, self._sub, width=58).grid(row=3, column=1, columnspan=8,
+        lbl(hf, "Sub").grid(row=ro+2, column=0, sticky="e", padx=3, pady=2)
+        ent(hf, self._sub, width=58).grid(row=ro+2, column=1, columnspan=8,
                                            sticky="ew", padx=3, pady=2)
 
         self._ref = tk.StringVar()
-        lbl(hf, "Ref").grid(row=4, column=0, sticky="e", padx=3, pady=2)
-        ent(hf, self._ref, width=58).grid(row=4, column=1, columnspan=8,
+        lbl(hf, "Ref").grid(row=ro+3, column=0, sticky="e", padx=3, pady=2)
+        ent(hf, self._ref, width=58).grid(row=ro+3, column=1, columnspan=8,
                                            sticky="ew", padx=3, pady=2)
 
         self._build_extra_header(hf)
@@ -690,17 +706,39 @@ class EntryFormBase(tk.Toplevel):
         cols = [("Sl.", 4), ("Particulars", 42),
                 ("CAV OD", 9), ("Micron", 8),
                 ("Rate", 11), ("Qty", 7), ("Amount", 13)]
+        # Use a sub-frame so we can draw vertical separator lines
+        # Columns: 0=Sl, sep, 1=Part, sep, 2=OD, sep, 3=Mic, sep, 4=Rate, sep, 5=Qty, sep, 6=Amt
+        # Grid col indices: data at 0,2,4,6,8,10,12  separators at 1,3,5,7,9,11
+        n_data_cols = len(cols)
         col_weights = [1, 9, 2, 2, 2, 2, 3]
-        for c, wt in enumerate(col_weights):
-            parent.grid_columnconfigure(c, weight=wt)
+        for c in range(n_data_cols):
+            gc = c * 2  # actual grid column (data)
+            parent.grid_columnconfigure(gc, weight=col_weights[c])
+        # Separator columns get zero weight, fixed width
+        for c in range(n_data_cols - 1):
+            gc = c * 2 + 1
+            parent.grid_columnconfigure(gc, weight=0, minsize=1)
+
+        # Header row
         for c, (txt, w) in enumerate(cols):
+            gc = c * 2
             tk.Label(parent, text=txt, bg=GRID_HDR, fg=WH,
-                     font=("Times New Roman", 8, "bold"),
-                     width=w, relief="raised", bd=1
-                     ).grid(row=0, column=c, sticky="nsew", padx=1, pady=1)
+                     font=("Times New Roman", 12, "bold"),
+                     width=w, relief="flat", bd=0
+                     ).grid(row=0, column=gc, sticky="nsew", padx=0, pady=0)
+        # Header separator line (bottom of header)
+        sep_hdr = tk.Frame(parent, bg="#333333", height=2)
+        sep_hdr.grid(row=1, column=0, columnspan=n_data_cols * 2 - 1, sticky="ew")
+
+        # Vertical separators spanning all rows
+        total_rows = self.N_ROWS + 3  # header + data rows + 2 extra text rows
+        for c in range(n_data_cols - 1):
+            gc = c * 2 + 1
+            vsep = tk.Frame(parent, bg="#888888", width=1)
+            vsep.grid(row=0, column=gc, rowspan=total_rows + 1, sticky="ns")
 
         for r in range(self.N_ROWS):
-            parent.grid_rowconfigure(r + 1, weight=1)
+            parent.grid_rowconfigure(r + 2, weight=1)
             rv: dict[str, tk.StringVar] = {
                 k: tk.StringVar() for k in
                 ("slno", "part", "od", "mic", "rate", "qty", "amt")
@@ -711,28 +749,28 @@ class EntryFormBase(tk.Toplevel):
 
             tk.Label(parent, textvariable=rv["slno"],
                      bg=WH, fg="#000", width=4,
-                     relief="sunken", bd=1,
-                     font=FONT_SMALL).grid(row=r+1, column=0, padx=1, pady=(0, 0), sticky="nsew")
-            ent(parent, rv["part"], width=36).grid(row=r+1, column=1, padx=1, pady=(0, 0), sticky="nsew")
-            ent(parent, rv["od"],   width=7).grid(row=r+1, column=2, padx=1, pady=(0, 0), sticky="nsew")
-            ent(parent, rv["mic"],  width=6).grid(row=r+1, column=3, padx=1, pady=(0, 0), sticky="nsew")
+                     relief="flat", bd=0,
+                     font=FONT_MAIN).grid(row=r+2, column=0, padx=0, pady=0, sticky="nsew")
+            ent(parent, rv["part"], width=36).grid(row=r+2, column=2, padx=0, pady=0, sticky="nsew")
+            ent(parent, rv["od"],   width=7).grid(row=r+2, column=4, padx=0, pady=0, sticky="nsew")
+            ent(parent, rv["mic"],  width=6).grid(row=r+2, column=6, padx=0, pady=0, sticky="nsew")
 
             re_ = ent(parent, rv["rate"], width=9)
-            re_.grid(row=r+1, column=4, padx=1, pady=(0, 0), sticky="nsew")
+            re_.grid(row=r+2, column=8, padx=0, pady=0, sticky="nsew")
             re_.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
 
             qe = ent(parent, rv["qty"], width=5)
-            qe.grid(row=r+1, column=5, padx=1, pady=(0, 0), sticky="nsew")
+            qe.grid(row=r+2, column=10, padx=0, pady=0, sticky="nsew")
             qe.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
 
             ent(parent, rv["amt"], width=11,
-                state="readonly").grid(row=r+1, column=6, padx=1, pady=(0, 0), sticky="nsew")
+                state="readonly").grid(row=r+2, column=12, padx=0, pady=0, sticky="nsew")
 
         self._extra1 = tk.StringVar()
         self._extra2 = tk.StringVar()
         for i, v in enumerate((self._extra1, self._extra2)):
             ent(parent, v, width=90).grid(
-                row=self.N_ROWS + 1 + i, column=0, columnspan=7,
+                row=self.N_ROWS + 2 + i, column=0, columnspan=n_data_cols * 2 - 1,
                 padx=1, pady=1, sticky="ew")
 
     def _build_totals(self, parent: tk.Frame) -> None:
@@ -1262,13 +1300,15 @@ class DCForm(EntryFormBase):
     TABLE      = "DC"
     AUTO_FIELD = "DC"
     NO_LBL     = "DC No."
+    SEPARATE_DATE_ROW = True
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._goods_value = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
-        lbl(parent, "Your D.Slip. No.").grid(row=5, column=0, sticky="e", padx=3, pady=2)
-        ent(parent, self._goods_value, width=40).grid(row=5, column=1, columnspan=5,
+        ro = self._hdr_row_offset + 4
+        lbl(parent, "Your D.Slip. No.").grid(row=ro, column=0, sticky="e", padx=3, pady=2)
+        ent(parent, self._goods_value, width=40).grid(row=ro, column=1, columnspan=5,
                                                        sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
@@ -1363,11 +1403,11 @@ class BillForm(EntryFormBase):
         self._sdpdc = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
-        lbl(parent, "PDC").grid(row=5, column=0, sticky="e", padx=3, pady=2)
-        ent(parent, self._pdc, width=30).grid(row=5, column=1, columnspan=4,
+        lbl(parent, "PDC").grid(row=self._hdr_row_offset + 4, column=0, sticky="e", padx=3, pady=2)
+        ent(parent, self._pdc, width=30).grid(row=self._hdr_row_offset + 4, column=1, columnspan=4,
                                                sticky="w", padx=3)
-        lbl(parent, "ASP D.C.No.").grid(row=5, column=5, sticky="e", padx=3)
-        ent(parent, self._sdpdc, width=24).grid(row=5, column=6, columnspan=3,
+        lbl(parent, "ASP D.C.No.").grid(row=self._hdr_row_offset + 4, column=5, sticky="e", padx=3)
+        ent(parent, self._sdpdc, width=24).grid(row=self._hdr_row_offset + 4, column=6, columnspan=3,
                                                  sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
@@ -1533,8 +1573,8 @@ class ItemInwardForm(EntryFormBase):
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._pdc = tk.StringVar()
-        lbl(parent, "Your D.Slip. No.").grid(row=5, column=0, sticky="e", padx=3, pady=2)
-        ent(parent, self._pdc, width=40).grid(row=5, column=1, columnspan=5,
+        lbl(parent, "Your D.Slip. No.").grid(row=self._hdr_row_offset + 4, column=0, sticky="e", padx=3, pady=2)
+        ent(parent, self._pdc, width=40).grid(row=self._hdr_row_offset + 4, column=1, columnspan=5,
                                                sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
@@ -1626,7 +1666,7 @@ class LedgerCreationForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Ledger Creation — Party Master",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=8)
@@ -1715,7 +1755,7 @@ class PurchaseForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Purchase Entry",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=6)
@@ -1841,7 +1881,7 @@ class POForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Purchase Order",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=6)
@@ -1997,7 +2037,7 @@ class ChequePayForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Cheque Payment Details",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=6)
@@ -2134,7 +2174,7 @@ class VoucherForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text=self.title(),
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=6)
@@ -2265,7 +2305,7 @@ class DayBookForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Day Book",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         fr = tk.Frame(self, bg=FORM_BG)
         fr.pack(fill="x", padx=8, pady=4)
@@ -2334,7 +2374,7 @@ class LedgerForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Ledger",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         fr = tk.Frame(self, bg=FORM_BG)
         fr.pack(fill="x", padx=8, pady=4)
@@ -2408,7 +2448,7 @@ class TrialBalanceForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Trial Balance",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
         btn(self._make_btn_row(), "Refresh", self._load, width=8).pack(side="left", padx=4)
 
         cols = ("Account", "Total Debit", "Total Credit", "Balance")
@@ -2475,7 +2515,7 @@ class StatementForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text=self.TITLE,
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         fr = tk.Frame(self, bg=FORM_BG)
         fr.pack(fill="x", padx=8, pady=4)
@@ -2573,7 +2613,7 @@ class StockForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Stock",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=6)
@@ -2667,7 +2707,7 @@ class ProductMasterForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Product Master",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=6)
@@ -2769,7 +2809,7 @@ class UsageForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Usage Entry",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         ef = tk.Frame(self, bg=FORM_BG)
         ef.pack(fill="x", padx=12, pady=6)
@@ -2881,7 +2921,7 @@ class DeleteForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Delete Record",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         fr = tk.Frame(self, bg=FORM_BG)
         fr.pack(fill="both", expand=True, padx=20, pady=15)
@@ -2938,7 +2978,7 @@ class OthersForm(tk.Toplevel):
         hdr = tk.Frame(self, bg=HDR_BG)
         hdr.pack(fill="x")
         tk.Label(hdr, text="Others / Settings",
-                 bg=HDR_BG, fg=WH, font=FONT_BOLD).pack(side="left", padx=8, pady=5)
+                 bg=HDR_BG, fg=WH, font=FONT_TITLE).pack(fill="x", pady=6)
 
         fr = tk.Frame(self, bg=FORM_BG)
         fr.pack(fill="both", expand=True, padx=20, pady=15)

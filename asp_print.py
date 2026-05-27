@@ -26,32 +26,32 @@ CONTENT_W = A4[0] - (2 * PAGE_MARGIN)
 THIN = 0.8
 BOX = 1.05
 
-S_DEITY   = ParagraphStyle("deity",   fontName="Times-Italic",  fontSize=10, alignment=TA_CENTER, leading=12)
-S_CO_NAME = ParagraphStyle("coname",  fontName="Times-Bold",    fontSize=38, alignment=TA_CENTER, leading=41)
-S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=12.5, alignment=TA_CENTER, leading=15)
-S_SECTION = ParagraphStyle("section", fontName="Times-Bold",    fontSize=20, alignment=TA_CENTER, leading=23)
-S_NORMAL  = ParagraphStyle("normal",  fontName="Times-Roman",   fontSize=13.5, leading=16.5)
-S_SMALL   = ParagraphStyle("small",   fontName="Times-Roman",   fontSize=12, leading=15)
-S_BOLD    = ParagraphStyle("bold",    fontName="Times-Bold",    fontSize=14, leading=17)
-S_RIGHT   = ParagraphStyle("right",   fontName="Times-Roman",   fontSize=13.5, alignment=TA_RIGHT, leading=16.5)
-S_RIGHT_B = ParagraphStyle("rightb",  fontName="Times-Bold",    fontSize=13.5, alignment=TA_RIGHT, leading=16.5)
-S_CENTER  = ParagraphStyle("center",  fontName="Times-Roman",   fontSize=13.5, alignment=TA_CENTER, leading=16.5)
-S_SMALL_B = ParagraphStyle("smallb",  fontName="Times-Bold",    fontSize=13, leading=16)
+S_DEITY   = ParagraphStyle("deity",   fontName="Times-Italic",  fontSize=12, alignment=TA_CENTER, leading=14)
+S_CO_NAME = ParagraphStyle("coname",  fontName="Times-Bold",    fontSize=42, alignment=TA_CENTER, leading=46)
+S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=14, alignment=TA_CENTER, leading=17)
+S_SECTION = ParagraphStyle("section", fontName="Times-Bold",    fontSize=26, alignment=TA_CENTER, leading=30)
+S_NORMAL  = ParagraphStyle("normal",  fontName="Times-Roman",   fontSize=15.5, leading=19)
+S_SMALL   = ParagraphStyle("small",   fontName="Times-Roman",   fontSize=14, leading=17)
+S_BOLD    = ParagraphStyle("bold",    fontName="Times-Bold",    fontSize=16, leading=19.5)
+S_RIGHT   = ParagraphStyle("right",   fontName="Times-Roman",   fontSize=15.5, alignment=TA_RIGHT, leading=19)
+S_RIGHT_B = ParagraphStyle("rightb",  fontName="Times-Bold",    fontSize=15.5, alignment=TA_RIGHT, leading=19)
+S_CENTER  = ParagraphStyle("center",  fontName="Times-Roman",   fontSize=15.5, alignment=TA_CENTER, leading=19)
+S_SMALL_B = ParagraphStyle("smallb",  fontName="Times-Bold",    fontSize=15, leading=18)
 
 # Proforma-specific styles (slightly larger than regular bill)
-S_PF_NORMAL = ParagraphStyle("pf_normal", fontName="Times-Roman", fontSize=14.5, leading=17.5)
-S_PF_BOLD   = ParagraphStyle("pf_bold",   fontName="Times-Bold",  fontSize=15, leading=18)
-S_PF_RIGHT  = ParagraphStyle("pf_right",  fontName="Times-Roman", fontSize=14.5, alignment=TA_RIGHT, leading=17.5)
-S_PF_RIGHT_B= ParagraphStyle("pf_rightb", fontName="Times-Bold",  fontSize=14.5, alignment=TA_RIGHT, leading=17.5)
-S_PF_CENTER = ParagraphStyle("pf_center", fontName="Times-Roman", fontSize=14.5, alignment=TA_CENTER, leading=17.5)
-S_PF_SMALL  = ParagraphStyle("pf_small",  fontName="Times-Roman", fontSize=13.5, leading=16.5)
-S_PF_SMALL_B= ParagraphStyle("pf_smallb", fontName="Times-Bold",  fontSize=13.5, leading=16.5)
-S_PF_SECTION= ParagraphStyle("pf_sect",   fontName="Times-Bold",  fontSize=22, alignment=TA_CENTER, leading=25)
-S_DC_REF    = ParagraphStyle("dc_ref",    fontName="Times-Bold",  fontSize=13, leading=16)
-S_TOT_LBL   = ParagraphStyle("totlbl",    fontName="Times-Roman", fontSize=13, leading=16)
-S_TOT_VAL   = ParagraphStyle("totval",    fontName="Times-Roman", fontSize=13, alignment=TA_RIGHT, leading=16)
-S_TOT_B_LBL = ParagraphStyle("totblbl",   fontName="Times-Bold",  fontSize=14, leading=17)
-S_TOT_B_VAL = ParagraphStyle("totbval",   fontName="Times-Bold",  fontSize=14, alignment=TA_RIGHT, leading=17)
+S_PF_NORMAL = ParagraphStyle("pf_normal", fontName="Times-Roman", fontSize=16.5, leading=20)
+S_PF_BOLD   = ParagraphStyle("pf_bold",   fontName="Times-Bold",  fontSize=17, leading=20.5)
+S_PF_RIGHT  = ParagraphStyle("pf_right",  fontName="Times-Roman", fontSize=16.5, alignment=TA_RIGHT, leading=20)
+S_PF_RIGHT_B= ParagraphStyle("pf_rightb", fontName="Times-Bold",  fontSize=16.5, alignment=TA_RIGHT, leading=20)
+S_PF_CENTER = ParagraphStyle("pf_center", fontName="Times-Roman", fontSize=16.5, alignment=TA_CENTER, leading=20)
+S_PF_SMALL  = ParagraphStyle("pf_small",  fontName="Times-Roman", fontSize=15.5, leading=19)
+S_PF_SMALL_B= ParagraphStyle("pf_smallb", fontName="Times-Bold",  fontSize=15.5, leading=19)
+S_PF_SECTION= ParagraphStyle("pf_sect",   fontName="Times-Bold",  fontSize=28, alignment=TA_CENTER, leading=32)
+S_DC_REF    = ParagraphStyle("dc_ref",    fontName="Times-Bold",  fontSize=15, leading=18)
+S_TOT_LBL   = ParagraphStyle("totlbl",    fontName="Times-Roman", fontSize=15, leading=18)
+S_TOT_VAL   = ParagraphStyle("totval",    fontName="Times-Roman", fontSize=15, alignment=TA_RIGHT, leading=18)
+S_TOT_B_LBL = ParagraphStyle("totblbl",   fontName="Times-Bold",  fontSize=16, leading=19)
+S_TOT_B_VAL = ParagraphStyle("totbval",   fontName="Times-Bold",  fontSize=16, alignment=TA_RIGHT, leading=19)
 
 COMPANY: dict[str, str] = {
     "name":  "Adhwaitha Sri Plating",
@@ -130,14 +130,14 @@ def _party_block(story: list, data: dict[str, Any],
         cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_NORMAL))
 
     meta_rows = [
-        [Paragraph(f"{no_label}", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_NORMAL)],
-        [Paragraph("Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_NORMAL)],
+        [Paragraph(f"{no_label}", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_BOLD)],
+        [Paragraph("Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_BOLD)],
     ]
-    meta_table = Table(meta_rows, colWidths=[28 * mm, 38 * mm])
+    meta_table = Table(meta_rows, colWidths=[35 * mm, 45 * mm])
     meta_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
 
     party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
@@ -180,10 +180,15 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
     row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 13.5),
-        ("BOX",           (0, 0), (-1, -1), BOX, colors.black),
-        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),
-        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),
+        ("FONTSIZE",      (0, 0), (-1, -1), 15.5),
+        # Outer border: top of first row, bottom of last row only
+        ("LINEABOVE",     (0, 0), (-1, 0), BOX, colors.black),
+        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),    # header underline
+        ("LINEBELOW",     (0, -1), (-1, -1), BOX, colors.black),   # bottom border
+        # Vertical column separators (no horizontal row lines)
+        ("LINEBEFORE",    (0, 0), (0, -1), BOX, colors.black),     # left edge
+        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),   # between columns
+        ("LINEAFTER",     (-1, 0), (-1, -1), BOX, colors.black),   # right edge
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 2.2),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
@@ -214,10 +219,15 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
     row_heights = [12.5 * mm] + [11.5 * mm] * (len(data) - 1)
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 13.5),
-        ("BOX",           (0, 0), (-1, -1), BOX, colors.black),
-        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),
-        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),
+        ("FONTSIZE",      (0, 0), (-1, -1), 15.5),
+        # Outer border: top of first row, bottom of last row only
+        ("LINEABOVE",     (0, 0), (-1, 0), BOX, colors.black),
+        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),    # header underline
+        ("LINEBELOW",     (0, -1), (-1, -1), BOX, colors.black),   # bottom border
+        # Vertical column separators (no horizontal row lines)
+        ("LINEBEFORE",    (0, 0), (0, -1), BOX, colors.black),     # left edge
+        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),   # between columns
+        ("LINEAFTER",     (-1, 0), (-1, -1), BOX, colors.black),   # right edge
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 2.1),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2.1),
@@ -253,10 +263,15 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
     row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 14.5),
-        ("BOX",           (0, 0), (-1, -1), BOX, colors.black),
-        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),
-        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),
+        ("FONTSIZE",      (0, 0), (-1, -1), 16.5),
+        # Outer border: top of first row, bottom of last row only
+        ("LINEABOVE",     (0, 0), (-1, 0), BOX, colors.black),
+        ("LINEBELOW",     (0, 0), (-1, 0), THIN, colors.black),    # header underline
+        ("LINEBELOW",     (0, -1), (-1, -1), BOX, colors.black),   # bottom border
+        # Vertical column separators (no horizontal row lines)
+        ("LINEBEFORE",    (0, 0), (0, -1), BOX, colors.black),     # left edge
+        ("LINEBEFORE",    (1, 0), (-1, -1), THIN, colors.black),   # between columns
+        ("LINEAFTER",     (-1, 0), (-1, -1), BOX, colors.black),   # right edge
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 2.2),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2.2),
@@ -300,9 +315,9 @@ def _totals_block(story: list, data: dict[str, Any],
 
     gst_rows.append([Paragraph("<b>Grand Total</b>", bold_label_style),
                      Paragraph(f"<b>{fmt_amt(total)}</b>", bold_value_style)])
-    right_t = Table(gst_rows, colWidths=[58 * mm, 30 * mm])
+    right_t = Table(gst_rows, colWidths=[62 * mm, 36 * mm])
     right_t.setStyle(TableStyle([
-        ("FONTSIZE",      (0, 0), (-1, -1), 10.5),
+        ("FONTSIZE",      (0, 0), (-1, -1), 15),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 1.6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 1.6),
@@ -340,7 +355,7 @@ def _totals_block(story: list, data: dict[str, Any],
 
 def _signature_block(story: list) -> None:
     story.append(Table(
-        [["", Paragraph(f"For {COMPANY['name']}", S_RIGHT)]],
+        [["", Paragraph(f"For {COMPANY['name']}", S_RIGHT_B)]],
         colWidths=[112 * mm, 88 * mm],
     ))
     story.append(Spacer(1, 8 * mm))
@@ -389,14 +404,15 @@ def _build_story_dc(data: dict[str, Any]) -> list:
         cust_details.append(Paragraph(f"Goods Value :&nbsp;&nbsp; <b>{data['goods_value']}</b>", S_NORMAL))
 
     meta_rows = [
-        [Paragraph("DC No.", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_NORMAL)],
-        [Paragraph("DC Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_NORMAL)],
+        [Paragraph("DC No.", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_BOLD)],
+        [Paragraph("", S_NORMAL), Paragraph("", S_NORMAL)],  # spacer row
+        [Paragraph("DC Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_BOLD)],
     ]
-    meta_table = Table(meta_rows, colWidths=[28 * mm, 38 * mm])
+    meta_table = Table(meta_rows, colWidths=[35 * mm, 45 * mm])
     meta_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
 
     party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
@@ -442,14 +458,14 @@ def _build_story_proforma(data: dict[str, Any]) -> list:
         cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_PF_NORMAL))
 
     meta_rows = [
-        [Paragraph("Proforma No.", S_PF_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_PF_NORMAL)],
-        [Paragraph("Date", S_PF_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_PF_NORMAL)],
+        [Paragraph("Proforma No.", S_PF_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_PF_BOLD)],
+        [Paragraph("Date", S_PF_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_PF_BOLD)],
     ]
-    meta_table = Table(meta_rows, colWidths=[32 * mm, 38 * mm])
+    meta_table = Table(meta_rows, colWidths=[38 * mm, 45 * mm])
     meta_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
 
     party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
