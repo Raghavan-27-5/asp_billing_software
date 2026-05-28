@@ -28,7 +28,7 @@ BOX = 1.05
 
 S_DEITY   = ParagraphStyle("deity",   fontName="Times-Italic",  fontSize=12, alignment=TA_CENTER, leading=14)
 S_CO_NAME = ParagraphStyle("coname",  fontName="Times-Bold",    fontSize=42, alignment=TA_CENTER, leading=46)
-S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=14, alignment=TA_CENTER, leading=17)
+S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=11.5, alignment=TA_CENTER, leading=14)
 S_SECTION = ParagraphStyle("section", fontName="Times-Bold",    fontSize=26, alignment=TA_CENTER, leading=30)
 S_NORMAL  = ParagraphStyle("normal",  fontName="Times-Roman",   fontSize=15.5, leading=19)
 S_SMALL   = ParagraphStyle("small",   fontName="Times-Roman",   fontSize=14, leading=17)
@@ -79,12 +79,54 @@ def _open_pdf(path: str) -> None:
 
 
 def _company_header(story: list) -> None:
-    story.append(Paragraph(COMPANY["deity"], S_DEITY))
-    story.append(Spacer(1, 0.4 * mm))
-    story.append(Paragraph(f"<b>{COMPANY['name']}</b>", S_CO_NAME))
-    story.append(Spacer(1, 0.7 * mm))
-    for k in ("addr1", "addr2", "addr3", "addr4"):
-        story.append(Paragraph(COMPANY[k], S_CO_ADDR))
+    from reportlab.platypus import Image
+    logo_path = Path(__file__).parent / "ref" / "old_ui" / "asp_logo.jpg"
+    
+    if logo_path.exists():
+        # Enlarge logo: 56mm width (2.15x original size)
+        logo_w = 56 * mm
+        logo_h = logo_w / 1.24675
+        logo_img = Image(str(logo_path), width=logo_w, height=logo_h)
+        
+        # Company name and deity title flowables
+        mid_flowables = [
+            Paragraph(COMPANY["deity"], S_DEITY),
+            Spacer(1, 0.4 * mm),
+            Paragraph(f"<b>{COMPANY['name']}</b>", S_CO_NAME)
+        ]
+        
+        # Address block flowables
+        addr_flowables = []
+        for k in ("addr1", "addr2", "addr3", "addr4"):
+            addr_flowables.append(Paragraph(COMPANY[k], S_CO_ADDR))
+            
+        # Combine Deity, Company name, and Addresses in the right column
+        details_flowables = mid_flowables + [Spacer(1, 0.7 * mm)] + addr_flowables
+        
+        # 2-column table: Left holds logo, Right holds details
+        col_w = [56 * mm, CONTENT_W - 56 * mm]
+        header_table = Table([
+            [logo_img, details_flowables]
+        ], colWidths=col_w)
+        
+        header_table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        story.append(header_table)
+    else:
+        # Fallback to legacy text-only layout if logo image is missing
+        story.append(Paragraph(COMPANY["deity"], S_DEITY))
+        story.append(Spacer(1, 0.4 * mm))
+        story.append(Paragraph(f"<b>{COMPANY['name']}</b>", S_CO_NAME))
+        story.append(Spacer(1, 0.7 * mm))
+        for k in ("addr1", "addr2", "addr3", "addr4"):
+            story.append(Paragraph(COMPANY[k], S_CO_ADDR))
+
     story.append(Spacer(1, 1.4 * mm))
 
     t = Table([[
