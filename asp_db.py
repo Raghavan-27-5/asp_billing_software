@@ -490,6 +490,10 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
     if "GOODS_VALUE" not in existing_dc_cols:
         con.execute("ALTER TABLE DC ADD COLUMN GOODS_VALUE TEXT DEFAULT ''")
 
+    # Schema migration: add MOULD_VALUE to DC if not present (backward-compat)
+    if "MOULD_VALUE" not in existing_dc_cols:
+        con.execute("ALTER TABLE DC ADD COLUMN MOULD_VALUE REAL DEFAULT 0")
+
     # Schema migration: add IGST to ItemInward if not present (backward-compat)
     existing_ii_cols = {row[1] for row in con.execute("PRAGMA table_info(ItemInward)").fetchall()}
     if "IGST" not in existing_ii_cols:
@@ -614,6 +618,15 @@ def save_rows(con: sqlite3.Connection, table: str, header: dict,
     placeholders = ",".join("?" * len(all_cols))
     col_str = ",".join(all_cols)
 
+    # Per-row extra columns (stored per line item, not from header)
+    row_extra: dict[str, list[str]] = {
+        "DC": ["MOULD_VALUE"],
+    }
+    row_extra_cols = row_extra.get(table, [])
+    all_cols = all_cols + row_extra_cols
+    placeholders = ",".join("?" * len(all_cols))
+    col_str = ",".join(all_cols)
+
     records: list[tuple] = []
     for row in rows:
         base_vals: list = [
@@ -627,6 +640,8 @@ def save_rows(con: sqlite3.Connection, table: str, header: dict,
         ]
         for ec in extra_cols:
             base_vals.append(header.get(ec, ""))
+        for rc in row_extra_cols:
+            base_vals.append(row.get(rc, 0))
         records.append(tuple(base_vals))
 
     con.executemany(

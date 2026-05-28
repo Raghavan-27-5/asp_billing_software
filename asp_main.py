@@ -1344,32 +1344,148 @@ class DCForm(EntryFormBase):
     NO_LBL     = "DC No."
     SEPARATE_DATE_ROW = True
 
+    def _build_grid(self, parent: tk.Frame) -> None:
+        """DC-specific grid: Sl, Particulars, CAV OD, Mould Value, Rate, Qty, Amount."""
+        cols = [("Sl.", 4), ("Particulars", 38),
+                ("CAV OD", 9), ("Mould Value", 10),
+                ("Rate", 11), ("Qty", 7), ("Amount", 13)]
+        n_data_cols = len(cols)
+        col_weights = [1, 8, 2, 2, 2, 2, 3]
+        for c in range(n_data_cols):
+            gc = c * 2
+            parent.grid_columnconfigure(gc, weight=col_weights[c])
+        for c in range(n_data_cols - 1):
+            gc = c * 2 + 1
+            parent.grid_columnconfigure(gc, weight=0, minsize=1)
+
+        # Header row
+        for c, (txt, w) in enumerate(cols):
+            gc = c * 2
+            tk.Label(parent, text=txt, bg=GRID_HDR, fg=WH,
+                     font=("Times New Roman", 12, "bold"),
+                     width=w, relief="flat", bd=0
+                     ).grid(row=0, column=gc, sticky="nsew", padx=0, pady=0)
+        sep_hdr = tk.Frame(parent, bg="#333333", height=2)
+        sep_hdr.grid(row=1, column=0, columnspan=n_data_cols * 2 - 1, sticky="ew")
+
+        total_rows = self.N_ROWS + 3
+        for c in range(n_data_cols - 1):
+            gc = c * 2 + 1
+            vsep = tk.Frame(parent, bg="#888888", width=1)
+            vsep.grid(row=0, column=gc, rowspan=total_rows + 1, sticky="ns")
+
+        for r in range(self.N_ROWS):
+            parent.grid_rowconfigure(r + 2, weight=1)
+            rv: dict[str, tk.StringVar] = {
+                k: tk.StringVar() for k in
+                ("slno", "part", "od", "mould_value", "mic", "rate", "qty", "amt")
+            }
+            rv["slno"].set(str(r + 1))
+            rv["qty"].set("1")
+            self._grid_vars.append(rv)
+
+            tk.Label(parent, textvariable=rv["slno"],
+                     bg=WH, fg="#000", width=4,
+                     relief="flat", bd=0,
+                     font=FONT_MAIN).grid(row=r+2, column=0, padx=0, pady=0, sticky="nsew")
+            ent(parent, rv["part"], width=32).grid(row=r+2, column=2, padx=0, pady=0, sticky="nsew")
+            ent(parent, rv["od"],   width=7).grid(row=r+2, column=4, padx=0, pady=0, sticky="nsew")
+            ent(parent, rv["mould_value"], width=8).grid(row=r+2, column=6, padx=0, pady=0, sticky="nsew")
+
+            re_ = ent(parent, rv["rate"], width=9)
+            re_.grid(row=r+2, column=8, padx=0, pady=0, sticky="nsew")
+            re_.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
+
+            qe = ent(parent, rv["qty"], width=5)
+            qe.grid(row=r+2, column=10, padx=0, pady=0, sticky="nsew")
+            qe.bind("<FocusOut>", lambda _, v=rv: self._calc_row(v))
+
+            ent(parent, rv["amt"], width=11,
+                state="readonly").grid(row=r+2, column=12, padx=0, pady=0, sticky="nsew")
+
+        self._extra1 = tk.StringVar()
+        self._extra2 = tk.StringVar()
+        for i, v in enumerate((self._extra1, self._extra2)):
+            ent(parent, v, width=90).grid(
+                row=self.N_ROWS + 2 + i, column=0, columnspan=n_data_cols * 2 - 1,
+                padx=1, pady=1, sticky="ew")
+
+    def _collect_rows(self) -> list[dict[str, Any]]:
+        """DC-specific: includes MOULD_VALUE per row."""
+        out: list[dict[str, Any]] = []
+        for i, rv in enumerate(self._grid_vars):
+            part = rv["part"].get().strip()
+            if not part:
+                continue
+            out.append({
+                "slno":        i + 1,
+                "part":        part,
+                "od":          int(to_float(rv["od"].get())),
+                "guage":       int(to_float(rv.get("mic", tk.StringVar()).get())),
+                "qty":         max(1, int(to_float(rv["qty"].get()))),
+                "rate":        to_float(rv["rate"].get()),
+                "AMT":         to_float(rv["amt"].get()),
+                "MOULD_VALUE": to_float(rv["mould_value"].get()),
+            })
+        return out
+
+    def _fill_from_rows(self, rows: list[sqlite3.Row]) -> None:
+        """DC-specific: restores MOULD_VALUE from loaded data."""
+        if not rows:
+            return
+        r0 = rows[0]
+        self._no_var.set(str(r0["inwno"]))
+        self._fy_no.set(f"FY No. {r0['inwno']}")
+        self._date_var.set(r0["inwdate"])
+        self._pname.set(r0["pname"] or "")
+        self._padd.set(r0["padd"] or "")
+        self._gstno.set(normalize_gstno(r0["PGSTNO"] or ""))
+        self._sub.set(r0["SUB"] or "")
+        self._ref.set(r0["ref"] or "")
+        self._tamt.set(fmt_amt(to_float(r0["TAMT"])))
+        self._cgst_v.set(fmt_amt(to_float(r0["CGST"])))
+        self._sgst_v.set(fmt_amt(to_float(r0["SGST"])))
+        self._igst_v.set(fmt_amt(to_float(r0["IGST"])))
+        self._total.set(fmt_amt(to_float(r0["NETAMT"])))
+        for rv in self._grid_vars:
+            for k in ("part", "od", "mould_value", "mic", "rate", "qty", "amt"):
+                if k in rv:
+                    rv[k].set("")
+            rv["qty"].set("1")
+        for i, row in enumerate(rows[:self.N_ROWS]):
+            rv = self._grid_vars[i]
+            rv["part"].set(str(row["part"]))
+            rv["od"].set(str(row["od"]) if row["od"] else "")
+            if "mic" in rv:
+                rv["mic"].set(str(row["guage"]) if row["guage"] else "")
+            rv["rate"].set(fmt_amt(to_float(row["rate"])))
+            rv["qty"].set(str(row["qty"]))
+            rv["amt"].set(fmt_amt(to_float(row["AMT"])))
+            # Restore mould value (backward-compat: old records may not have it)
+            try:
+                mv = row["MOULD_VALUE"]
+                rv["mould_value"].set(fmt_amt(to_float(mv)) if mv else "")
+            except (IndexError, KeyError):
+                rv["mould_value"].set("")
+        self._fill_extra_fields(r0)
+        self._calc_totals()
+
     def _build_extra_header(self, parent: tk.Frame) -> None:
-        self._goods_value = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
-        ro = self._hdr_row_offset + 4
-        lbl(parent, "Your D.Slip. No.").grid(row=ro, column=0, sticky="e", padx=3, pady=2)
-        ent(parent, self._goods_value, width=40).grid(row=ro, column=1, columnspan=5,
-                                                       sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
         return {
-            "GOODS_VALUE": self._goods_value.get().strip(),
+            "GOODS_VALUE": "",
             "sdidcno":     getattr(self, "_inward_ref_num", ""),
             "sdidt":       getattr(self, "_inward_ref_date", ""),
         }
 
     def _reset_extra_fields(self) -> None:
-        self._goods_value.set("")
         self._inward_ref_num = ""
         self._inward_ref_date = ""
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
-        try:
-            self._goods_value.set(row["GOODS_VALUE"] or "")
-        except (IndexError, KeyError):
-            pass
         try:
             self._inward_ref_num = row["sdidcno"] or ""
             self._inward_ref_date = row["sdidt"] or ""
@@ -1412,18 +1528,21 @@ class DCForm(EntryFormBase):
         self._inward_ref_date = rows[0]["inwdate"] or ""
 
         for rv in self._grid_vars:
-            for k in ("part", "od", "mic", "rate", "qty", "amt"):
-                rv[k].set("")
+            for k in ("part", "od", "mould_value", "mic", "rate", "qty", "amt"):
+                if k in rv:
+                    rv[k].set("")
             rv["qty"].set("1")
 
         for i, row in enumerate(rows[:self.N_ROWS]):
             rv = self._grid_vars[i]
             rv["part"].set(str(row["part"]))
             rv["od"].set(str(row["od"]) if row["od"] else "")
-            rv["mic"].set(str(row["guage"]) if row["guage"] else "")
+            if "mic" in rv:
+                rv["mic"].set(str(row["guage"]) if row["guage"] else "")
             rv["rate"].set("")
             rv["qty"].set(str(row["qty"]))
             rv["amt"].set("")
+            rv["mould_value"].set("")
 
         self._calc_totals()
         messagebox.showinfo("Loaded", f"Inward {num} loaded (non-financial).", parent=self)
@@ -1452,25 +1571,30 @@ class DCForm(EntryFormBase):
 
         # Clear grid then populate items (non-financial: no rates/amounts)
         for rv in self._grid_vars:
-            for k in ("part", "od", "mic", "rate", "qty", "amt"):
-                rv[k].set("")
+            for k in ("part", "od", "mould_value", "mic", "rate", "qty", "amt"):
+                if k in rv:
+                    rv[k].set("")
             rv["qty"].set("1")
 
         for i, row in enumerate(rows[:self.N_ROWS]):
             rv = self._grid_vars[i]
             rv["part"].set(str(row["part"]))
             rv["od"].set(str(row["od"]) if row["od"] else "")
-            rv["mic"].set(str(row["guage"]) if row["guage"] else "")
+            if "mic" in rv:
+                rv["mic"].set(str(row["guage"]) if row["guage"] else "")
             rv["rate"].set("")   # DC is non-financial
             rv["qty"].set(str(row["qty"]))
             rv["amt"].set("")    # DC is non-financial
+            rv["mould_value"].set("")
 
         self._calc_totals()
         messagebox.showinfo("Loaded", f"Quotation {num} loaded (non-financial).", parent=self)
 
     def _print_dc(self) -> None:
         d = self._get_print_data()
-        d["goods_value"] = self._goods_value.get().strip()
+        # Inject mould_value into each row for the print pipeline
+        for row in d["rows"]:
+            row["mould_value"] = row.get("MOULD_VALUE", 0)
         path = pr.print_dc(d, db.REPORTS_DIR, open_pdf=True)
         messagebox.showinfo("PDF", f"Saved: {path}", parent=self)
 

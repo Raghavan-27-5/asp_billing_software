@@ -63,7 +63,7 @@ COMPANY: dict[str, str] = {
     "gstno": "33ADZPA3791Q2ZP",
     "state": "33",
     "hsn":   "75089010",
-    "sign":  "A. Dhanalakshmi",
+    "sign":  "A. Dhanalakshmi",  # legacy — no longer printed
 }
 
 
@@ -156,7 +156,7 @@ def _party_block(story: list, data: dict[str, Any],
         story.append(Spacer(1, 1.2 * mm))
 
     cust_details = [
-        Paragraph("Customer Name and Address", S_SMALL_B),
+        Paragraph("To", S_SMALL_B),
         Spacer(1, 0.8 * mm),
         Paragraph(f"<b>{data.get('pname','')}</b>", S_BOLD),
     ]
@@ -166,10 +166,6 @@ def _party_block(story: list, data: dict[str, Any],
         cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_NORMAL))
     if data.get("sdpdc"):
         cust_details.append(Paragraph(f"ASP D.C. No. : {data['sdpdc']}", S_DC_REF))
-    if data.get("ref"):
-        cust_details.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_NORMAL))
-    if data.get("sub"):
-        cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_NORMAL))
 
     meta_rows = [
         [Paragraph(f"{no_label}", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_BOLD)],
@@ -193,7 +189,37 @@ def _party_block(story: list, data: dict[str, Any],
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     story.append(party_table)
+
+    # Ref and Sub — centered with well spacing, below the party block
+    _ref_sub_block(story, data)
     story.append(Spacer(1, 1.4 * mm))
+
+
+def _ref_sub_block(story: list, data: dict[str, Any],
+                   style: ParagraphStyle = S_DC_REF) -> None:
+    """Centered Ref / Sub lines below the party block — shared across all forms."""
+    ref_sub_items: list = []
+    if data.get("ref"):
+        ref_sub_items.append(
+            Paragraph(f"Ref.:    {data['ref']}", style))
+    if data.get("sub"):
+        ref_sub_items.append(
+            Paragraph(f"Sub.:    {data['sub']}", style))
+    if ref_sub_items:
+        story.append(Spacer(1, 1.5 * mm))
+        ref_table = Table(
+            [[item] for item in ref_sub_items],
+            colWidths=[CONTENT_W],
+        )
+        ref_table.setStyle(TableStyle([
+            ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING",    (0, 0), (-1, -1), 1.5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 20),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 20),
+        ]))
+        story.append(ref_table)
 
 
 def _line_items_table(rows: list[dict[str, Any]]) -> Table:
@@ -242,23 +268,27 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
 
 
 def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
-    """DC layout: no amount column — quantities and items only."""
+    """DC layout: no amount column — items, mould value, and quantities."""
     header = [
         Paragraph("<b>SL No</b>", S_CENTER),
         Paragraph("<b>Item</b>", S_NORMAL),
+        Paragraph("<b>Mould<br/>Value</b>", S_CENTER),
         Paragraph("<b>Qty.</b>", S_CENTER),
     ]
-    col_w = [20 * mm, 146 * mm, 38 * mm]
+    col_w = [18 * mm, 126 * mm, 30 * mm, 30 * mm]
     data: list[list] = [header]
     for i, row in enumerate(rows):
+        mv = row.get("mould_value", row.get("MOULD_VALUE", 0))
+        mv_str = fmt_amt(float(mv)) if mv else ""
         data.append([
             Paragraph(str(i + 1), S_CENTER),
             Paragraph(str(row.get("part", "")), S_NORMAL),
+            Paragraph(mv_str, S_CENTER),
             Paragraph(str(row.get("qty", 1)), S_CENTER),
         ])
     min_rows = max(len(data), min(len(data) + 2, 10))
     while len(data) < min_rows:
-        data.append([Paragraph("", S_NORMAL)] * 3)
+        data.append([Paragraph("", S_NORMAL)] * 4)
 
     row_heights = [12.5 * mm] + [11.5 * mm] * (len(data) - 1)
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
@@ -399,15 +429,26 @@ def _totals_block(story: list, data: dict[str, Any],
 
 
 def _signature_block(story: list) -> None:
+    """Dark thick line, 'For Adhwaitha Sri Plating' right-aligned, signature space."""
+    # Dark thick horizontal rule
+    sig_line = Table(
+        [[""]],
+        colWidths=[CONTENT_W],
+    )
+    sig_line.setStyle(TableStyle([
+        ("LINEBELOW", (0, 0), (-1, -1), 2.0, colors.black),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(sig_line)
+    story.append(Spacer(1, 2 * mm))
+    # "For Adhwaitha Sri Plating" right-aligned
     story.append(Table(
         [["", Paragraph(f"For {COMPANY['name']}", S_RIGHT_B)]],
         colWidths=[CONTENT_W - 94 * mm, 94 * mm],
     ))
-    story.append(Spacer(1, 8 * mm))
-    story.append(Table(
-        [["", Paragraph(f"<b>{COMPANY['sign']}</b>", S_RIGHT_B)]],
-        colWidths=[CONTENT_W - 94 * mm, 94 * mm],
-    ))
+    # Signature space
+    story.append(Spacer(1, 14 * mm))
 
 
 def _build_story(data: dict[str, Any], doc_type: str, no_label: str) -> list:
@@ -422,19 +463,19 @@ def _build_story(data: dict[str, Any], doc_type: str, no_label: str) -> list:
 
 
 def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
-    """DC story: no amount column, goods_value in party block, no totals block."""
+    """DC story: no amount column, no goods value, no totals block."""
     story: list = []
     _company_header(story)
 
     story.append(Spacer(1, 1 * mm))
     story.append(Paragraph("<b>DELIVERY CHALLAN</b>", S_SECTION))
     story.append(Spacer(1, 1.2 * mm))
-    # Copy label: ORIGINAL / DUPLICATE / TRIPLICATE
+    # Copy label: ORIGINAL COPY / DUPLICATE COPY / TRIPLICATE COPY
     S_COPY_LABEL = ParagraphStyle(
         "copylabel", fontName="Times-Bold", fontSize=18,
         alignment=TA_CENTER, leading=22,
     )
-    story.append(Paragraph(f"<b>{copy_label}</b>", S_COPY_LABEL))
+    story.append(Paragraph(f"<b>{copy_label} COPY</b>", S_COPY_LABEL))
     story.append(Spacer(1, 1.2 * mm))
 
     cust_details = [
@@ -446,19 +487,12 @@ def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
         cust_details.append(Paragraph(data["padd"], S_NORMAL))
     if data.get("gstno"):
         cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_NORMAL))
-    if data.get("ref"):
-        cust_details.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_NORMAL))
-    if data.get("sub"):
-        cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_NORMAL))
-    if data.get("goods_value"):
-        cust_details.append(Paragraph(f"Goods Value :&nbsp;&nbsp; <b>{data['goods_value']}</b>", S_NORMAL))
 
     meta_rows = [
-        [Paragraph("DC No.", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_BOLD)],
-        [Paragraph("", S_NORMAL), Paragraph("", S_NORMAL)],  # spacer row
-        [Paragraph("DC Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_BOLD)],
+        [Paragraph("DC Date", S_BOLD), Paragraph(f":  <b>{data.get('date','')}</b>", S_BOLD)],
+        [Paragraph("DC No.", S_BOLD), Paragraph(f":  <b>{data.get('no','')}</b>", S_BOLD)],
     ]
-    meta_table = Table(meta_rows, colWidths=[35 * mm, 45 * mm])
+    meta_table = Table(meta_rows, colWidths=[28 * mm, 52 * mm])
     meta_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
@@ -476,7 +510,11 @@ def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     story.append(party_table)
+
+    # Ref and Sub — centered with well spacing
+    _ref_sub_block(story, data)
     story.append(Spacer(1, 1.4 * mm))
+
     story.append(_line_items_table_dc(data.get("rows", [])))
     story.append(Spacer(1, 1.2 * mm))
     story.append(Paragraph("Only Job Work Not For Sale", S_BOLD))
@@ -502,10 +540,6 @@ def _build_story_proforma(data: dict[str, Any]) -> list:
         cust_details.append(Paragraph(data["padd"], S_PF_NORMAL))
     if data.get("gstno"):
         cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_PF_NORMAL))
-    if data.get("ref"):
-        cust_details.append(Paragraph(f"Ref.:&nbsp;&nbsp; {data['ref']}", S_PF_NORMAL))
-    if data.get("sub"):
-        cust_details.append(Paragraph(f"Sub.:&nbsp;&nbsp; {data['sub']}", S_PF_NORMAL))
 
     meta_rows = [
         [Paragraph("Proforma No.", S_PF_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_PF_BOLD)],
@@ -529,7 +563,11 @@ def _build_story_proforma(data: dict[str, Any]) -> list:
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     story.append(party_table)
+
+    # Ref and Sub — centered with well spacing
+    _ref_sub_block(story, data, S_DC_REF)
     story.append(Spacer(1, 1.4 * mm))
+
     story.append(_line_items_table_proforma(data.get("rows", [])))
     story.append(Spacer(1, 0.8 * mm))
 
@@ -591,9 +629,10 @@ def print_job_work_bill(data: dict[str, Any], reports_dir: Path,
 
 def print_dc(data: dict[str, Any], reports_dir: Path,
              open_pdf: bool = True) -> str:
-    """Generate ORIGINAL + DUPLICATE + TRIPLICATE DC PDFs and open all three."""
+    """Generate TRIPLICATE + DUPLICATE + ORIGINAL DC PDFs.
+    Opens in reverse order so ORIGINAL appears on top for the operator."""
     paths: list[str] = []
-    for label in ("ORIGINAL", "DUPLICATE", "TRIPLICATE"):
+    for label in ("TRIPLICATE", "DUPLICATE", "ORIGINAL"):
         fname = f"DC_{data['no']}_{label}.pdf"
         path = str(reports_dir / fname)
         _render(_build_story_dc(data, copy_label=label), path)
@@ -603,7 +642,7 @@ def print_dc(data: dict[str, Any], reports_dir: Path,
         for p in paths:
             _open_pdf(p)
             time.sleep(0.3)
-    return paths[0]
+    return paths[-1]  # Return ORIGINAL path
 
 
 def print_purchase_order(data: dict[str, Any], reports_dir: Path,
