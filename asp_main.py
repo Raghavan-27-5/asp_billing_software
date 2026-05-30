@@ -61,6 +61,14 @@ def ent(parent: tk.Widget, var: Optional[tk.Variable] = None,
     )
 
 
+def row_value(row: sqlite3.Row, key: str, default: Any = "") -> Any:
+    try:
+        value = row[key]
+    except (IndexError, KeyError):
+        return default
+    return default if value is None else value
+
+
 def btn(parent: tk.Widget, text: str, cmd: Callable,
         width: int = 14, bg: str = BTN_BG, **kw: Any) -> tk.Button:
     return tk.Button(
@@ -1471,21 +1479,36 @@ class DCForm(EntryFormBase):
         self._calc_totals()
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
+        self._customer_dc_no = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
+        lbl(parent, "Customer D.C. No.").grid(
+            row=self._hdr_row_offset + 4, column=0, sticky="e", padx=3, pady=2)
+        ent(parent, self._customer_dc_no, width=30).grid(
+            row=self._hdr_row_offset + 4, column=1, columnspan=4,
+            sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
+        customer_dc_no = self._customer_dc_no.get().strip()
         return {
-            "GOODS_VALUE": "",
+            "CUSTOMER_DC_NO": customer_dc_no,
+            "GOODS_VALUE": customer_dc_no,
             "sdidcno":     getattr(self, "_inward_ref_num", ""),
             "sdidt":       getattr(self, "_inward_ref_date", ""),
         }
 
     def _reset_extra_fields(self) -> None:
+        self._customer_dc_no.set("")
         self._inward_ref_num = ""
         self._inward_ref_date = ""
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
+        customer_dc_no = row_value(row, "CUSTOMER_DC_NO")
+        if not customer_dc_no:
+            customer_dc_no = row_value(row, "GOODS_VALUE")
+        if not customer_dc_no:
+            customer_dc_no = row_value(row, "PDC")
+        self._customer_dc_no.set(customer_dc_no)
         try:
             self._inward_ref_num = row["sdidcno"] or ""
             self._inward_ref_date = row["sdidt"] or ""
@@ -1526,6 +1549,7 @@ class DCForm(EntryFormBase):
         self._ref.set(f"Inw Ref: {num}")
         self._inward_ref_num = num
         self._inward_ref_date = rows[0]["inwdate"] or ""
+        self._customer_dc_no.set(row_value(rows[0], "PDC"))
 
         for rv in self._grid_vars:
             for k in ("part", "od", "mould_value", "mic", "rate", "qty", "amt"):
@@ -1613,7 +1637,7 @@ class BillForm(EntryFormBase):
         self._sdpdc = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
-        lbl(parent, "PDC").grid(row=self._hdr_row_offset + 4, column=0, sticky="e", padx=3, pady=2)
+        lbl(parent, "Customer D.C. No.").grid(row=self._hdr_row_offset + 4, column=0, sticky="e", padx=3, pady=2)
         ent(parent, self._pdc, width=30).grid(row=self._hdr_row_offset + 4, column=1, columnspan=4,
                                                sticky="w", padx=3)
         lbl(parent, "ASP D.C.No.").grid(row=self._hdr_row_offset + 4, column=5, sticky="e", padx=3)
@@ -1621,8 +1645,10 @@ class BillForm(EntryFormBase):
                                                  sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
+        customer_dc_no = self._pdc.get().strip()
         return {
-            "PDC":     self._pdc.get().strip(),
+            "PDC":     customer_dc_no,
+            "CUSTOMER_DC_NO": customer_dc_no,
             "SDPDC":   self._sdpdc.get().strip(),
             "sdidcno": getattr(self, "_inward_ref_num", ""),
             "sdidt":   getattr(self, "_inward_ref_date", ""),
@@ -1635,11 +1661,11 @@ class BillForm(EntryFormBase):
         self._inward_ref_date = ""
 
     def _fill_extra_fields(self, row: sqlite3.Row) -> None:
-        try:
-            self._pdc.set(row["PDC"] or "")
-            self._sdpdc.set(row["SDPDC"] or "")
-        except (IndexError, KeyError):
-            pass
+        customer_dc_no = row_value(row, "CUSTOMER_DC_NO")
+        if not customer_dc_no:
+            customer_dc_no = row_value(row, "PDC")
+        self._pdc.set(customer_dc_no)
+        self._sdpdc.set(row_value(row, "SDPDC"))
         try:
             self._inward_ref_num = row["sdidcno"] or ""
             self._inward_ref_date = row["sdidt"] or ""
@@ -1682,23 +1708,18 @@ class BillForm(EntryFormBase):
 
         if hasattr(self, "_sdpdc"):
             self._sdpdc.set(num)
-        # Populate customer D.Slip No. from DC's GOODS_VALUE/PDC
+        # Populate Customer D.C. No. from the DC record.
         if hasattr(self, "_pdc"):
-            goods_val = ""
-            try:
-                goods_val = r0["GOODS_VALUE"] or ""
-            except (IndexError, KeyError):
-                pass
-            if not goods_val:
-                try:
-                    goods_val = r0["PDC"] or ""
-                except (IndexError, KeyError):
-                    pass
-            self._pdc.set(goods_val)
+            customer_dc_no = row_value(r0, "CUSTOMER_DC_NO")
+            if not customer_dc_no:
+                customer_dc_no = row_value(r0, "GOODS_VALUE")
+            if not customer_dc_no:
+                customer_dc_no = row_value(r0, "PDC")
+            self._pdc.set(customer_dc_no)
 
-        inward_no = r0.get("sdidcno", "")
+        inward_no = row_value(r0, "sdidcno")
         self._inward_ref_num = inward_no
-        self._inward_ref_date = r0.get("sdidt", "")
+        self._inward_ref_date = row_value(r0, "sdidt")
         inw_rates = {}
         if inward_no:
             inw_rows = db.load_doc(self.app.db, "ItemInward", inward_no)
@@ -1727,9 +1748,10 @@ class BillForm(EntryFormBase):
                 rv["mic"].set(inw_rates[part_key]["mic"])
                 rv["od"].set(inw_rates[part_key]["od"])
             else:
-                rv["rate"].set(fmt_amt(to_float(row.get("rate", 0))) if to_float(row.get("rate", 0)) else "")
-                rv["mic"].set(str(row.get("guage", "")) if row.get("guage") else "")
-                rv["od"].set(str(row.get("od", "")) if row.get("od") else "")
+                rate = to_float(row_value(row, "rate", 0))
+                rv["rate"].set(fmt_amt(rate) if rate else "")
+                rv["mic"].set(str(row_value(row, "guage")) if row_value(row, "guage") else "")
+                rv["od"].set(str(row_value(row, "od")) if row_value(row, "od") else "")
 
             r = to_float(rv["rate"].get())
             q = to_float(rv["qty"].get()) or 1
@@ -1779,6 +1801,7 @@ class BillForm(EntryFormBase):
 
     def _print_bill(self) -> None:
         d = self._get_print_data()
+        d["customer_dc_no"] = self._pdc.get()
         d["sdpdc"] = self._sdpdc.get()
         path = pr.print_job_work_bill(d, db.REPORTS_DIR, open_pdf=True)
         messagebox.showinfo("PDF", f"Saved: {path}", parent=self)

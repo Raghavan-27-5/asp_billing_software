@@ -37,6 +37,8 @@ S_RIGHT   = ParagraphStyle("right",   fontName="Times-Roman",   fontSize=15.5, a
 S_RIGHT_B = ParagraphStyle("rightb",  fontName="Times-Bold",    fontSize=15.5, alignment=TA_RIGHT, leading=19)
 S_CENTER  = ParagraphStyle("center",  fontName="Times-Roman",   fontSize=15.5, alignment=TA_CENTER, leading=19)
 S_SMALL_B = ParagraphStyle("smallb",  fontName="Times-Bold",    fontSize=15, leading=18)
+S_CUST_NORMAL = ParagraphStyle("cust_normal", fontName="Times-Roman", fontSize=15.5, leading=19, leftIndent=9 * mm)
+S_CUST_BOLD   = ParagraphStyle("cust_bold",   fontName="Times-Bold",  fontSize=16, leading=19.5, leftIndent=9 * mm)
 
 # Proforma-specific styles (slightly larger than regular bill)
 S_PF_NORMAL = ParagraphStyle("pf_normal", fontName="Times-Roman", fontSize=16.5, leading=20)
@@ -47,7 +49,10 @@ S_PF_CENTER = ParagraphStyle("pf_center", fontName="Times-Roman", fontSize=16.5,
 S_PF_SMALL  = ParagraphStyle("pf_small",  fontName="Times-Roman", fontSize=15.5, leading=19)
 S_PF_SMALL_B= ParagraphStyle("pf_smallb", fontName="Times-Bold",  fontSize=15.5, leading=19)
 S_PF_SECTION= ParagraphStyle("pf_sect",   fontName="Times-Bold",  fontSize=28, alignment=TA_CENTER, leading=32)
+S_PF_CUST_NORMAL = ParagraphStyle("pf_cust_normal", fontName="Times-Roman", fontSize=16.5, leading=20, leftIndent=9 * mm)
+S_PF_CUST_BOLD   = ParagraphStyle("pf_cust_bold",   fontName="Times-Bold",  fontSize=17, leading=20.5, leftIndent=9 * mm)
 S_DC_REF    = ParagraphStyle("dc_ref",    fontName="Times-Bold",  fontSize=15, leading=18)
+S_REF_CENTER= ParagraphStyle("ref_center", fontName="Times-Bold", fontSize=16.5, alignment=TA_CENTER, leading=20)
 S_TOT_LBL   = ParagraphStyle("totlbl",    fontName="Times-Roman", fontSize=15, leading=18)
 S_TOT_VAL   = ParagraphStyle("totval",    fontName="Times-Roman", fontSize=15, alignment=TA_RIGHT, leading=18)
 S_TOT_B_LBL = ParagraphStyle("totblbl",   fontName="Times-Bold",  fontSize=16, leading=19)
@@ -155,71 +160,113 @@ def _party_block(story: list, data: dict[str, Any],
         story.append(Paragraph("ORIGINAL COPY", S_CENTER))
         story.append(Spacer(1, 1.2 * mm))
 
+    _customer_meta_block(
+        story,
+        data,
+        no_label,
+        include_dc_numbers=(doc_type == "JOB WORK BILL"),
+    )
+    _ref_sub_block(story, data)
+    story.append(Spacer(1, 1.4 * mm))
+
+
+def _customer_meta_block(
+    story: list,
+    data: dict[str, Any],
+    no_label: str,
+    *,
+    include_dc_numbers: bool = False,
+    small_bold_style: ParagraphStyle = S_SMALL_B,
+    normal_style: ParagraphStyle = S_NORMAL,
+    bold_style: ParagraphStyle = S_BOLD,
+    cust_normal_style: ParagraphStyle = S_CUST_NORMAL,
+    cust_bold_style: ParagraphStyle = S_CUST_BOLD,
+) -> None:
     cust_details = [
-        Paragraph("To", S_SMALL_B),
-        Spacer(1, 0.8 * mm),
-        Paragraph(f"<b>{data.get('pname','')}</b>", S_BOLD),
+        Paragraph("To", small_bold_style),
+        Spacer(1, 3.8 * mm),
+        Paragraph(f"<b>{data.get('pname','')}</b>", cust_bold_style),
     ]
     if data.get("padd"):
-        cust_details.append(Paragraph(data["padd"], S_NORMAL))
+        cust_details.append(Spacer(1, 2.8 * mm))
+        cust_details.append(Paragraph(data["padd"], cust_normal_style))
     if data.get("gstno"):
-        cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_NORMAL))
-    if data.get("sdpdc"):
-        cust_details.append(Paragraph(f"ASP D.C. No. : {data['sdpdc']}", S_DC_REF))
+        cust_details.append(Spacer(1, 2.8 * mm))
+        cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", cust_normal_style))
 
+    if include_dc_numbers:
+        customer_dc_no = (
+            data.get("customer_dc_no")
+            or data.get("CUSTOMER_DC_NO")
+            or data.get("pdc")
+            or data.get("PDC")
+            or ""
+        )
+        asp_dc_no = data.get("sdpdc") or data.get("SDPDC") or ""
+        cust_details.extend([
+            Spacer(1, 3.8 * mm),
+            Paragraph(f"Customer D.C. No : {customer_dc_no}", cust_bold_style),
+            Spacer(1, 2.0 * mm),
+            Paragraph(f"ASP D.C. No : {asp_dc_no}", cust_bold_style),
+        ])
+
+    right_w = CONTENT_W * 0.40
+    label_w = 40 * mm
     meta_rows = [
-        [Paragraph(f"{no_label}", S_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_BOLD)],
-        [Paragraph("Date", S_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_BOLD)],
+        [Paragraph("Date", bold_style), Paragraph(f": <b>{data.get('date','')}</b>", bold_style)],
+        ["", ""],
+        [Paragraph(no_label, bold_style), Paragraph(f": <b>{data.get('no','')}</b>", bold_style)],
     ]
-    meta_table = Table(meta_rows, colWidths=[35 * mm, 45 * mm])
+    meta_table = Table(
+        meta_rows,
+        colWidths=[label_w, right_w - label_w],
+        rowHeights=[None, 4.0 * mm, None],
+    )
     meta_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
     ]))
 
-    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
+    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.60, right_w])
     party_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
         ("LINEBELOW", (0, 0), (-1, -1), BOX, colors.black),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     story.append(party_table)
 
-    # Ref and Sub — centered with well spacing, below the party block
-    _ref_sub_block(story, data)
-    story.append(Spacer(1, 1.4 * mm))
-
 
 def _ref_sub_block(story: list, data: dict[str, Any],
-                   style: ParagraphStyle = S_DC_REF) -> None:
+                   style: ParagraphStyle = S_DC_REF,
+                   centered: bool = True,
+                   spaced_labels: bool = True) -> None:
     """Centered Ref / Sub lines below the party block — shared across all forms."""
     ref_sub_items: list = []
-    if data.get("ref"):
-        ref_sub_items.append(
-            Paragraph(f"Ref.:    {data['ref']}", style))
-    if data.get("sub"):
-        ref_sub_items.append(
-            Paragraph(f"Sub.:    {data['sub']}", style))
-    if ref_sub_items:
-        story.append(Spacer(1, 1.5 * mm))
-        ref_table = Table(
-            [[item] for item in ref_sub_items],
-            colWidths=[CONTENT_W],
-        )
-        ref_table.setStyle(TableStyle([
-            ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
-            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING",    (0, 0), (-1, -1), 1.5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 20),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 20),
-        ]))
-        story.append(ref_table)
+    text_style = S_REF_CENTER if centered else style
+    ref_label = "Ref :" if spaced_labels else "Ref.:"
+    sub_label = "Sub :" if spaced_labels else "Sub.:"
+    ref_sub_items.append(Paragraph(f"{ref_label}    {data.get('ref', '')}", text_style))
+    ref_sub_items.append(Spacer(1, 3.5 * mm))
+    ref_sub_items.append(Paragraph(f"{sub_label}    {data.get('sub', '')}", text_style))
+    story.append(Spacer(1, 2.0 * mm))
+    ref_table = Table(
+        [[item] for item in ref_sub_items],
+        colWidths=[CONTENT_W],
+    )
+    ref_table.setStyle(TableStyle([
+        ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 1.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 20),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 20),
+    ]))
+    story.append(ref_table)
 
 
 def _line_items_table(rows: list[dict[str, Any]]) -> Table:
@@ -478,40 +525,7 @@ def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
     story.append(Paragraph(f"<b>{copy_label} COPY</b>", S_COPY_LABEL))
     story.append(Spacer(1, 1.2 * mm))
 
-    cust_details = [
-        Paragraph("To", S_SMALL_B),
-        Spacer(1, 0.8 * mm),
-        Paragraph(f"<b>{data.get('pname','')}</b>", S_BOLD),
-    ]
-    if data.get("padd"):
-        cust_details.append(Paragraph(data["padd"], S_NORMAL))
-    if data.get("gstno"):
-        cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_NORMAL))
-
-    meta_rows = [
-        [Paragraph("DC Date", S_BOLD), Paragraph(f":  <b>{data.get('date','')}</b>", S_BOLD)],
-        [Paragraph("DC No.", S_BOLD), Paragraph(f":  <b>{data.get('no','')}</b>", S_BOLD)],
-    ]
-    meta_table = Table(meta_rows, colWidths=[28 * mm, 52 * mm])
-    meta_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
-
-    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
-    party_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
-        ("LINEBELOW", (0, 0), (-1, -1), BOX, colors.black),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story.append(party_table)
-
-    # Ref and Sub — centered with well spacing
+    _customer_meta_block(story, data, "DC No.")
     _ref_sub_block(story, data)
     story.append(Spacer(1, 1.4 * mm))
 
@@ -531,40 +545,16 @@ def _build_story_proforma(data: dict[str, Any]) -> list:
     story.append(Paragraph("<b>PROFORMA INVOICE</b>", S_PF_SECTION))
     story.append(Spacer(1, 1.2 * mm))
 
-    cust_details = [
-        Paragraph("To", S_PF_SMALL_B),
-        Spacer(1, 0.8 * mm),
-        Paragraph(f"<b>{data.get('pname','')}</b>", S_PF_BOLD),
-    ]
-    if data.get("padd"):
-        cust_details.append(Paragraph(data["padd"], S_PF_NORMAL))
-    if data.get("gstno"):
-        cust_details.append(Paragraph(f"GST No. : <b>{data['gstno']}</b>", S_PF_NORMAL))
-
-    meta_rows = [
-        [Paragraph("Proforma No.", S_PF_BOLD), Paragraph(f": <b>{data.get('no','')}</b>", S_PF_BOLD)],
-        [Paragraph("Date", S_PF_BOLD), Paragraph(f": <b>{data.get('date','')}</b>", S_PF_BOLD)],
-    ]
-    meta_table = Table(meta_rows, colWidths=[38 * mm, 45 * mm])
-    meta_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-    ]))
-
-    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.63, CONTENT_W * 0.37])
-    party_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
-        ("LINEBELOW", (0, 0), (-1, -1), BOX, colors.black),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story.append(party_table)
-
-    # Ref and Sub — centered with well spacing
+    _customer_meta_block(
+        story,
+        data,
+        "Proforma No.",
+        small_bold_style=S_PF_SMALL_B,
+        normal_style=S_PF_NORMAL,
+        bold_style=S_PF_BOLD,
+        cust_normal_style=S_PF_CUST_NORMAL,
+        cust_bold_style=S_PF_CUST_BOLD,
+    )
     _ref_sub_block(story, data, S_DC_REF)
     story.append(Spacer(1, 1.4 * mm))
 
@@ -612,7 +602,7 @@ def print_proforma(data: dict[str, Any], reports_dir: Path,
 def print_quotation(data: dict[str, Any], reports_dir: Path,
                     open_pdf: bool = True) -> str:
     path = str(reports_dir / f"Quotation_{data['no']}.pdf")
-    _render(_build_story(data, "QUOTATION", "Quot. No."), path)
+    _render(_build_story(data, "QUOTATION", "Quotation No."), path)
     if open_pdf:
         _open_pdf(path)
     return path
