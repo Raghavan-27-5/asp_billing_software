@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -83,9 +84,20 @@ def _open_pdf(path: str) -> None:
         pass
 
 
+def _resource_path(*parts: str) -> Path:
+    if getattr(sys, "frozen", False):
+        external = Path(sys.executable).parent.joinpath(*parts)
+        if external.exists():
+            return external
+        bundled = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent)).joinpath(*parts)
+        if bundled.exists():
+            return bundled
+    return Path(__file__).parent.joinpath(*parts)
+
+
 def _company_header(story: list) -> None:
     from reportlab.platypus import Image
-    logo_path = Path(__file__).parent / "ref" / "old_ui" / "asp_logo.jpg"
+    logo_path = _resource_path("ref", "old_ui", "asp_logo.jpg")
     
     if logo_path.exists():
         # Enlarge logo: 56mm width (2.15x original size)
