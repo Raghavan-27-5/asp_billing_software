@@ -179,7 +179,7 @@ def _party_block(story: list, data: dict[str, Any],
         no_label,
         include_dc_numbers=(doc_type == "JOB WORK BILL"),
     )
-    _ref_sub_block(story, data)
+    _ref_sub_block(story, data, show_ref=(doc_type != "JOB WORK BILL"))
     story.append(Spacer(1, 1.4 * mm))
 
 
@@ -229,6 +229,7 @@ def _customer_meta_block(
                 Paragraph("Date:", S_DC_PAIR),
                 Paragraph(str(customer_dc_date), S_DC_PAIR),
             ],
+            ["", "", "", ""],
             [
                 Paragraph("ASP D.C.No:", S_DC_PAIR),
                 Paragraph(str(asp_dc_no), S_DC_PAIR),
@@ -236,7 +237,11 @@ def _customer_meta_block(
                 Paragraph(str(asp_dc_date), S_DC_PAIR),
             ],
         ]
-        dc_table = Table(dc_rows, colWidths=[42 * mm, 35 * mm, 17 * mm, 28 * mm])
+        dc_table = Table(
+            dc_rows,
+            colWidths=[50 * mm, 35 * mm, 15 * mm, 27 * mm],
+            rowHeights=[None, 3.5 * mm, None],
+        )
         dc_table.setStyle(TableStyle([
             ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
             ("TOPPADDING",    (0, 0), (-1, -1), 1),
@@ -283,16 +288,18 @@ def _customer_meta_block(
 def _ref_sub_block(story: list, data: dict[str, Any],
                    style: ParagraphStyle = S_DC_REF,
                    centered: bool = True,
-                   spaced_labels: bool = True) -> None:
+                   spaced_labels: bool = True,
+                   show_ref: bool = True) -> None:
     """Centered Ref / Sub lines below the party block — shared across all forms."""
     ref_sub_items: list = []
     text_style = S_REF_CENTER if centered else style
     ref_label = "Ref :" if spaced_labels else "Ref.:"
     sub_label = "Sub :" if spaced_labels else "Sub.:"
-    ref_sub_items.append(Paragraph(f"{ref_label}    {data.get('ref', '')}", text_style))
-    ref_sub_items.append(Spacer(1, 3.5 * mm))
+    if show_ref:
+        ref_sub_items.append(Paragraph(f"{ref_label}    {data.get('ref', '')}", text_style))
+        ref_sub_items.append(Spacer(1, 3.5 * mm))
     ref_sub_items.append(Paragraph(f"{sub_label}    {data.get('sub', '')}", text_style))
-    story.append(Spacer(1, 2.0 * mm))
+    story.append(Spacer(1, 4.5 * mm if not show_ref else 2.0 * mm))
     ref_table = Table(
         [[item] for item in ref_sub_items],
         colWidths=[CONTENT_W],
