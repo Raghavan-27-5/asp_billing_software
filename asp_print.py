@@ -28,8 +28,8 @@ THIN = 0.8
 BOX = 1.05
 
 S_DEITY   = ParagraphStyle("deity",   fontName="Times-Italic",  fontSize=12, alignment=TA_CENTER, leading=14)
-S_CO_NAME = ParagraphStyle("coname",  fontName="Times-Bold",    fontSize=42, alignment=TA_CENTER, leading=46)
-S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=11.5, alignment=TA_CENTER, leading=14)
+S_CO_NAME = ParagraphStyle("coname",  fontName="Times-Bold",    fontSize=41, alignment=TA_CENTER, leading=44)
+S_CO_ADDR = ParagraphStyle("coaddr",  fontName="Times-Roman",   fontSize=12, alignment=TA_CENTER, leading=14.2)
 S_SECTION = ParagraphStyle("section", fontName="Times-Bold",    fontSize=26, alignment=TA_CENTER, leading=30)
 S_NORMAL  = ParagraphStyle("normal",  fontName="Times-Roman",   fontSize=15.5, leading=19)
 S_SMALL   = ParagraphStyle("small",   fontName="Times-Roman",   fontSize=14, leading=17)
@@ -40,6 +40,7 @@ S_CENTER  = ParagraphStyle("center",  fontName="Times-Roman",   fontSize=15.5, a
 S_SMALL_B = ParagraphStyle("smallb",  fontName="Times-Bold",    fontSize=15, leading=18)
 S_CUST_NORMAL = ParagraphStyle("cust_normal", fontName="Times-Roman", fontSize=15.5, leading=19, leftIndent=9 * mm)
 S_CUST_BOLD   = ParagraphStyle("cust_bold",   fontName="Times-Bold",  fontSize=16, leading=19.5, leftIndent=9 * mm)
+S_DC_PAIR     = ParagraphStyle("dc_pair",     fontName="Times-Bold",  fontSize=15.5, leading=18)
 
 # Proforma-specific styles (slightly larger than regular bill)
 S_PF_NORMAL = ParagraphStyle("pf_normal", fontName="Times-Roman", fontSize=16.5, leading=20)
@@ -100,8 +101,8 @@ def _company_header(story: list) -> None:
     logo_path = _resource_path("ref", "old_ui", "asp_logo.jpg")
     
     if logo_path.exists():
-        # Enlarge logo: 56mm width (2.15x original size)
-        logo_w = 56 * mm
+        # Enlarged so the small service text remains legible in print.
+        logo_w = 60 * mm
         logo_h = logo_w / 1.24675
         logo_img = Image(str(logo_path), width=logo_w, height=logo_h)
         
@@ -121,7 +122,7 @@ def _company_header(story: list) -> None:
         details_flowables = mid_flowables + [Spacer(1, 0.7 * mm)] + addr_flowables
         
         # 2-column table: Left holds logo, Right holds details
-        col_w = [56 * mm, CONTENT_W - 56 * mm]
+        col_w = [60 * mm, CONTENT_W - 60 * mm]
         header_table = Table([
             [logo_img, details_flowables]
         ], colWidths=col_w)
@@ -214,15 +215,41 @@ def _customer_meta_block(
             or data.get("PDC")
             or ""
         )
+        customer_dc_date = (
+            data.get("customer_dc_date")
+            or data.get("CUSTOMER_DC_DATE")
+            or ""
+        )
         asp_dc_no = data.get("sdpdc") or data.get("SDPDC") or ""
+        asp_dc_date = data.get("asp_dc_date") or data.get("ASP_DC_DATE") or ""
+        dc_rows = [
+            [
+                Paragraph("Customer D.C.No:", S_DC_PAIR),
+                Paragraph(str(customer_dc_no), S_DC_PAIR),
+                Paragraph("Date:", S_DC_PAIR),
+                Paragraph(str(customer_dc_date), S_DC_PAIR),
+            ],
+            [
+                Paragraph("ASP D.C.No:", S_DC_PAIR),
+                Paragraph(str(asp_dc_no), S_DC_PAIR),
+                Paragraph("Date:", S_DC_PAIR),
+                Paragraph(str(asp_dc_date), S_DC_PAIR),
+            ],
+        ]
+        dc_table = Table(dc_rows, colWidths=[42 * mm, 35 * mm, 17 * mm, 28 * mm])
+        dc_table.setStyle(TableStyle([
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING",    (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 2),
+        ]))
         cust_details.extend([
             Spacer(1, 3.8 * mm),
-            Paragraph(f"Customer D.C. No : {customer_dc_no}", cust_bold_style),
-            Spacer(1, 2.0 * mm),
-            Paragraph(f"ASP D.C. No : {asp_dc_no}", cust_bold_style),
+            dc_table,
         ])
 
-    right_w = CONTENT_W * 0.40
+    right_w = CONTENT_W * 0.36
     label_w = 40 * mm
     meta_rows = [
         [Paragraph("Date", bold_style), Paragraph(f": <b>{data.get('date','')}</b>", bold_style)],
@@ -240,7 +267,7 @@ def _customer_meta_block(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
     ]))
 
-    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.60, right_w])
+    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.64, right_w])
     party_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
@@ -301,7 +328,7 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
             Paragraph(str(row.get("qty", 1)), S_CENTER),
             Paragraph(fmt_amt(float(row.get("AMT", 0))), S_RIGHT),
         ])
-    min_rows = max(len(data), min(len(data) + 2, 8))
+    min_rows = max(len(data), min(len(data) + 1, 8))
     while len(data) < min_rows:
         data.append([Paragraph("", S_NORMAL)] * 6)
 
@@ -345,7 +372,7 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
             Paragraph(mv_str, S_CENTER),
             Paragraph(str(row.get("qty", 1)), S_CENTER),
         ])
-    min_rows = max(len(data), min(len(data) + 2, 10))
+    min_rows = max(len(data), 8)
     while len(data) < min_rows:
         data.append([Paragraph("", S_NORMAL)] * 4)
 
@@ -390,7 +417,7 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
             Paragraph(str(row.get("qty", 1)), S_PF_CENTER),
             Paragraph(fmt_amt(float(row.get("AMT", 0))), S_PF_RIGHT),
         ])
-    min_rows = max(len(data), min(len(data) + 2, 8))
+    min_rows = max(len(data), min(len(data) + 1, 8))
     while len(data) < min_rows:
         data.append([Paragraph("", S_PF_NORMAL)] * 6)
 
@@ -488,26 +515,23 @@ def _totals_block(story: list, data: dict[str, Any],
 
 
 def _signature_block(story: list) -> None:
-    """Dark thick line, 'For Adhwaitha Sri Plating' right-aligned, signature space."""
-    # Dark thick horizontal rule
-    sig_line = Table(
-        [[""]],
-        colWidths=[CONTENT_W],
-    )
-    sig_line.setStyle(TableStyle([
-        ("LINEBELOW", (0, 0), (-1, -1), 2.0, colors.black),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.append(sig_line)
-    story.append(Spacer(1, 2 * mm))
-    # "For Adhwaitha Sri Plating" right-aligned
-    story.append(Table(
-        [["", Paragraph(f"For {COMPANY['name']}", S_RIGHT_B)]],
+    """Right-aligned company label plus about one inch of signing space."""
+    sig = Table(
+        [
+            ["", Paragraph(f"For {COMPANY['name']}", S_RIGHT_B)],
+        ],
         colWidths=[CONTENT_W - 94 * mm, 94 * mm],
-    ))
-    # Signature space
-    story.append(Spacer(1, 14 * mm))
+        rowHeights=[24 * mm],
+    )
+    sig.setStyle(TableStyle([
+        ("LINEABOVE",     (0, 0), (-1, 0), 2.0, colors.black),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+    ]))
+    story.append(sig)
 
 
 def _build_story(data: dict[str, Any], doc_type: str, no_label: str) -> list:

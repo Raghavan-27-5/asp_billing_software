@@ -296,6 +296,7 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
         ref      TEXT    DEFAULT '',
         PDC      TEXT    DEFAULT '',
         CUSTOMER_DC_NO TEXT DEFAULT '',
+        CUSTOMER_DC_DATE TEXT DEFAULT '',
         ono      TEXT    DEFAULT '',
         odt      TEXT    DEFAULT '',
         dcno     TEXT    DEFAULT '',
@@ -333,7 +334,9 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
         ref      TEXT    DEFAULT '',
         PDC      TEXT    DEFAULT '',
         CUSTOMER_DC_NO TEXT DEFAULT '',
+        CUSTOMER_DC_DATE TEXT DEFAULT '',
         SDPDC    TEXT    DEFAULT '',
+        ASP_DC_DATE TEXT DEFAULT '',
         ono      TEXT    DEFAULT '',
         odt      TEXT    DEFAULT '',
         dcno     TEXT    DEFAULT '',
@@ -491,6 +494,8 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
     existing_dc_cols = {row[1] for row in con.execute("PRAGMA table_info(DC)").fetchall()}
     if "CUSTOMER_DC_NO" not in existing_dc_cols:
         con.execute("ALTER TABLE DC ADD COLUMN CUSTOMER_DC_NO TEXT DEFAULT ''")
+    if "CUSTOMER_DC_DATE" not in existing_dc_cols:
+        con.execute("ALTER TABLE DC ADD COLUMN CUSTOMER_DC_DATE TEXT DEFAULT ''")
     if "GOODS_VALUE" not in existing_dc_cols:
         con.execute("ALTER TABLE DC ADD COLUMN GOODS_VALUE TEXT DEFAULT ''")
 
@@ -502,6 +507,10 @@ def _init_year_db(con: sqlite3.Connection) -> None:  # noqa: C901
     existing_bill_cols = {row[1] for row in con.execute("PRAGMA table_info(BILL)").fetchall()}
     if "CUSTOMER_DC_NO" not in existing_bill_cols:
         con.execute("ALTER TABLE BILL ADD COLUMN CUSTOMER_DC_NO TEXT DEFAULT ''")
+    if "CUSTOMER_DC_DATE" not in existing_bill_cols:
+        con.execute("ALTER TABLE BILL ADD COLUMN CUSTOMER_DC_DATE TEXT DEFAULT ''")
+    if "ASP_DC_DATE" not in existing_bill_cols:
+        con.execute("ALTER TABLE BILL ADD COLUMN ASP_DC_DATE TEXT DEFAULT ''")
 
     # Schema migration: add IGST to ItemInward if not present (backward-compat)
     existing_ii_cols = {row[1] for row in con.execute("PRAGMA table_info(ItemInward)").fetchall()}
@@ -619,8 +628,8 @@ def save_rows(con: sqlite3.Connection, table: str, header: dict,
 
     extra: dict[str, list[str]] = {
         "ItemInward": ["PDC", "sdidcno", "sdidt"],
-        "DC":         ["CUSTOMER_DC_NO", "GOODS_VALUE", "sdidcno", "sdidt"],
-        "BILL":       ["PDC", "CUSTOMER_DC_NO", "SDPDC", "sdidcno", "sdidt"],
+        "DC":         ["CUSTOMER_DC_NO", "CUSTOMER_DC_DATE", "GOODS_VALUE", "sdidcno", "sdidt"],
+        "BILL":       ["PDC", "CUSTOMER_DC_NO", "CUSTOMER_DC_DATE", "SDPDC", "ASP_DC_DATE", "sdidcno", "sdidt"],
     }
     extra_cols = extra.get(table, [])
     all_cols = base_cols + extra_cols

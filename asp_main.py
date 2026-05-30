@@ -1480,6 +1480,7 @@ class DCForm(EntryFormBase):
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._customer_dc_no = tk.StringVar()
+        self._customer_dc_date = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
         lbl(parent, "Customer D.C. No.").grid(
@@ -1487,11 +1488,17 @@ class DCForm(EntryFormBase):
         ent(parent, self._customer_dc_no, width=30).grid(
             row=self._hdr_row_offset + 4, column=1, columnspan=4,
             sticky="w", padx=3)
+        lbl(parent, "Customer D.C. Date").grid(
+            row=self._hdr_row_offset + 4, column=5, sticky="e", padx=3, pady=2)
+        ent(parent, self._customer_dc_date, width=14).grid(
+            row=self._hdr_row_offset + 4, column=6, columnspan=2,
+            sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
         customer_dc_no = self._customer_dc_no.get().strip()
         return {
             "CUSTOMER_DC_NO": customer_dc_no,
+            "CUSTOMER_DC_DATE": parse_date(self._customer_dc_date.get()),
             "GOODS_VALUE": customer_dc_no,
             "sdidcno":     getattr(self, "_inward_ref_num", ""),
             "sdidt":       getattr(self, "_inward_ref_date", ""),
@@ -1499,6 +1506,7 @@ class DCForm(EntryFormBase):
 
     def _reset_extra_fields(self) -> None:
         self._customer_dc_no.set("")
+        self._customer_dc_date.set("")
         self._inward_ref_num = ""
         self._inward_ref_date = ""
 
@@ -1509,6 +1517,7 @@ class DCForm(EntryFormBase):
         if not customer_dc_no:
             customer_dc_no = row_value(row, "PDC")
         self._customer_dc_no.set(customer_dc_no)
+        self._customer_dc_date.set(row_value(row, "CUSTOMER_DC_DATE"))
         try:
             self._inward_ref_num = row["sdidcno"] or ""
             self._inward_ref_date = row["sdidt"] or ""
@@ -1550,6 +1559,7 @@ class DCForm(EntryFormBase):
         self._inward_ref_num = num
         self._inward_ref_date = rows[0]["inwdate"] or ""
         self._customer_dc_no.set(row_value(rows[0], "PDC"))
+        self._customer_dc_date.set("")
 
         for rv in self._grid_vars:
             for k in ("part", "od", "mould_value", "mic", "rate", "qty", "amt"):
@@ -1634,14 +1644,22 @@ class BillForm(EntryFormBase):
 
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._pdc   = tk.StringVar()
+        self._customer_dc_date = tk.StringVar()
         self._sdpdc = tk.StringVar()
+        self._asp_dc_date = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
         lbl(parent, "Customer D.C. No.").grid(row=self._hdr_row_offset + 4, column=0, sticky="e", padx=3, pady=2)
         ent(parent, self._pdc, width=30).grid(row=self._hdr_row_offset + 4, column=1, columnspan=4,
                                                sticky="w", padx=3)
-        lbl(parent, "ASP D.C.No.").grid(row=self._hdr_row_offset + 4, column=5, sticky="e", padx=3)
-        ent(parent, self._sdpdc, width=24).grid(row=self._hdr_row_offset + 4, column=6, columnspan=3,
+        lbl(parent, "Date").grid(row=self._hdr_row_offset + 4, column=5, sticky="e", padx=3)
+        ent(parent, self._customer_dc_date, width=14).grid(row=self._hdr_row_offset + 4, column=6, columnspan=2,
+                                                 sticky="w", padx=3)
+        lbl(parent, "ASP D.C.No.").grid(row=self._hdr_row_offset + 5, column=0, sticky="e", padx=3)
+        ent(parent, self._sdpdc, width=30).grid(row=self._hdr_row_offset + 5, column=1, columnspan=4,
+                                                 sticky="w", padx=3)
+        lbl(parent, "Date").grid(row=self._hdr_row_offset + 5, column=5, sticky="e", padx=3)
+        ent(parent, self._asp_dc_date, width=14).grid(row=self._hdr_row_offset + 5, column=6, columnspan=2,
                                                  sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
@@ -1649,14 +1667,18 @@ class BillForm(EntryFormBase):
         return {
             "PDC":     customer_dc_no,
             "CUSTOMER_DC_NO": customer_dc_no,
+            "CUSTOMER_DC_DATE": parse_date(self._customer_dc_date.get()),
             "SDPDC":   self._sdpdc.get().strip(),
+            "ASP_DC_DATE": parse_date(self._asp_dc_date.get()),
             "sdidcno": getattr(self, "_inward_ref_num", ""),
             "sdidt":   getattr(self, "_inward_ref_date", ""),
         }
 
     def _reset_extra_fields(self) -> None:
         self._pdc.set("")
+        self._customer_dc_date.set("")
         self._sdpdc.set("")
+        self._asp_dc_date.set("")
         self._inward_ref_num = ""
         self._inward_ref_date = ""
 
@@ -1665,7 +1687,9 @@ class BillForm(EntryFormBase):
         if not customer_dc_no:
             customer_dc_no = row_value(row, "PDC")
         self._pdc.set(customer_dc_no)
+        self._customer_dc_date.set(row_value(row, "CUSTOMER_DC_DATE"))
         self._sdpdc.set(row_value(row, "SDPDC"))
+        self._asp_dc_date.set(row_value(row, "ASP_DC_DATE"))
         try:
             self._inward_ref_num = row["sdidcno"] or ""
             self._inward_ref_date = row["sdidt"] or ""
@@ -1716,6 +1740,9 @@ class BillForm(EntryFormBase):
             if not customer_dc_no:
                 customer_dc_no = row_value(r0, "PDC")
             self._pdc.set(customer_dc_no)
+            self._customer_dc_date.set(row_value(r0, "CUSTOMER_DC_DATE"))
+        if hasattr(self, "_asp_dc_date"):
+            self._asp_dc_date.set(row_value(r0, "inwdate"))
 
         inward_no = row_value(r0, "sdidcno")
         self._inward_ref_num = inward_no
@@ -1802,7 +1829,9 @@ class BillForm(EntryFormBase):
     def _print_bill(self) -> None:
         d = self._get_print_data()
         d["customer_dc_no"] = self._pdc.get()
+        d["customer_dc_date"] = self._customer_dc_date.get()
         d["sdpdc"] = self._sdpdc.get()
+        d["asp_dc_date"] = self._asp_dc_date.get()
         path = pr.print_job_work_bill(d, db.REPORTS_DIR, open_pdf=True)
         messagebox.showinfo("PDF", f"Saved: {path}", parent=self)
 
