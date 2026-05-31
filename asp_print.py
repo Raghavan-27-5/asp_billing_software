@@ -66,7 +66,7 @@ COMPANY: dict[str, str] = {
     "addr1": "Fac.: SF.No.233, Plot No.: C 26 , Electro Plating Industrial Park,",
     "addr2": "D.Karisalkulam, Manamadurai Taluk ,Sivagangai District.",
     "addr3": "Tamilnadu, 630411. Mobile No. 63693 73649, 99944 43530",
-    "addr4": "Off.: Old No.86 J/2, New No.76, Arunaohalam Street, S.S.Colony North Gate,Madurai-18.",
+    "addr4": "Off.: Old No.86 J/2, New No.76, Arunachalam Street, S.S.Colony North Gate,Madurai-625016",
     "gstno": "33ADZPA3791Q2ZP",
     "state": "33",
     "hsn":   "75089010",
@@ -254,8 +254,12 @@ def _customer_meta_block(
             dc_table,
         ])
 
-    right_w = CONTENT_W * 0.36
-    label_w = 40 * mm
+    if include_dc_numbers:
+        right_w = CONTENT_W * 0.36
+        label_w = 40 * mm
+    else:
+        right_w = CONTENT_W * 0.44
+        label_w = 46 * mm
     meta_rows = [
         [Paragraph("Date", bold_style), Paragraph(f": <b>{data.get('date','')}</b>", bold_style)],
         ["", ""],
@@ -272,7 +276,7 @@ def _customer_meta_block(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
     ]))
 
-    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W * 0.64, right_w])
+    party_table = Table([[cust_details, meta_table]], colWidths=[CONTENT_W - right_w, right_w])
     party_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LINEABOVE", (0, 0), (-1, -1), BOX, colors.black),
