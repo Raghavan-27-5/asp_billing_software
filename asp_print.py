@@ -588,8 +588,8 @@ def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
         data,
         "DC No.",
         extra_meta_rows=[
-            ("Customer DC.NO", data.get("customer_dc_no") or data.get("CUSTOMER_DC_NO") or ""),
-            ("PO NO", data.get("po_no") or data.get("PO_NO") or data.get("pono") or ""),
+            ("Customer DC.No", data.get("customer_dc_no") or data.get("CUSTOMER_DC_NO") or ""),
+            ("PO No", data.get("po_no") or data.get("PO_NO") or data.get("pono") or ""),
         ],
     )
     _ref_sub_block(story, data)
