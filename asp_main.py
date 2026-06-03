@@ -1626,6 +1626,7 @@ class DCForm(EntryFormBase):
 
     def _print_dc(self) -> None:
         d = self._get_print_data()
+        d["customer_dc_no"] = self._customer_dc_no.get()
         # Inject mould_value into each row for the print pipeline
         for row in d["rows"]:
             row["mould_value"] = row.get("MOULD_VALUE", 0)

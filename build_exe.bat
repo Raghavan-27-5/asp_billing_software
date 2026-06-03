@@ -19,12 +19,12 @@ REM    - ganesha.png               app splash/header image
 REM    - ref\old_ui\asp_logo.jpg   print form logo
 REM
 REM  Final output to send:
-REM    dist\AdhwaithaSriPlating_Client.zip
+REM    dist\AdhwaithaSriPlating_Client_Final.zip
 REM ============================================================
 
 set "APP_NAME=AdhwaithaSriPlating"
-set "PACKAGE_DIR=dist\%APP_NAME%_Client"
-set "ZIP_PATH=dist\%APP_NAME%_Client.zip"
+set "PACKAGE_DIR=dist\%APP_NAME%_Client_Final"
+set "ZIP_PATH=dist\%APP_NAME%_Client_Final.zip"
 
 echo.
 echo  Adhwaitha Sri Plating -- Client ZIP Builder

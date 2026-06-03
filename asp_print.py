@@ -189,6 +189,7 @@ def _customer_meta_block(
     no_label: str,
     *,
     include_dc_numbers: bool = False,
+    extra_meta_rows: list[tuple[str, str]] | None = None,
     small_bold_style: ParagraphStyle = S_SMALL_B,
     normal_style: ParagraphStyle = S_NORMAL,
     bold_style: ParagraphStyle = S_BOLD,
@@ -257,6 +258,9 @@ def _customer_meta_block(
     if include_dc_numbers:
         right_w = CONTENT_W * 0.36
         label_w = 40 * mm
+    elif extra_meta_rows:
+        right_w = CONTENT_W * 0.46
+        label_w = 58 * mm
     else:
         right_w = CONTENT_W * 0.44
         label_w = 46 * mm
@@ -265,10 +269,17 @@ def _customer_meta_block(
         ["", ""],
         [Paragraph(no_label, bold_style), Paragraph(f": <b>{data.get('no','')}</b>", bold_style)],
     ]
+    row_heights = [None, 4.0 * mm, None]
+    for label, value in extra_meta_rows or []:
+        meta_rows.extend([
+            ["", ""],
+            [Paragraph(label, bold_style), Paragraph(f": <b>{value}</b>", bold_style)],
+        ])
+        row_heights.extend([4.0 * mm, None])
     meta_table = Table(
         meta_rows,
         colWidths=[label_w, right_w - label_w],
-        rowHeights=[None, 4.0 * mm, None],
+        rowHeights=row_heights,
     )
     meta_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -328,7 +339,7 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
         Paragraph("<b>Qty.</b>", S_CENTER),
         Paragraph("<b>Amt.</b>", S_RIGHT),
     ]
-    col_w = [14 * mm, 96 * mm, 21 * mm, 23 * mm, 16 * mm, 34 * mm]
+    col_w = [14 * mm, 86 * mm, 18 * mm, 32 * mm, 16 * mm, 38 * mm]
     data: list[list] = [header]
     for i, row in enumerate(rows):
         data.append([
@@ -417,7 +428,7 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
         Paragraph("<b>Qty.</b>", S_PF_CENTER),
         Paragraph("<b>Amt.</b>", S_PF_RIGHT),
     ]
-    col_w = [14 * mm, 96 * mm, 21 * mm, 23 * mm, 16 * mm, 34 * mm]
+    col_w = [14 * mm, 86 * mm, 18 * mm, 32 * mm, 16 * mm, 38 * mm]
     data: list[list] = [header]
     for i, row in enumerate(rows):
         data.append([
@@ -572,7 +583,15 @@ def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
     story.append(Paragraph(f"<b>{copy_label} COPY</b>", S_COPY_LABEL))
     story.append(Spacer(1, 1.2 * mm))
 
-    _customer_meta_block(story, data, "DC No.")
+    _customer_meta_block(
+        story,
+        data,
+        "DC No.",
+        extra_meta_rows=[
+            ("Customer DC.NO", data.get("customer_dc_no") or data.get("CUSTOMER_DC_NO") or ""),
+            ("PO NO", data.get("po_no") or data.get("PO_NO") or data.get("pono") or ""),
+        ],
+    )
     _ref_sub_block(story, data)
     story.append(Spacer(1, 1.4 * mm))
 
