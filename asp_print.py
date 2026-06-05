@@ -385,6 +385,7 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
     ]
     col_w = [18 * mm, 126 * mm, 30 * mm, 30 * mm]
     data: list[list] = [header]
+    real_row_count = 0
     for i, row in enumerate(rows):
         mv = row.get("mould_value", row.get("MOULD_VALUE", 0))
         mv_str = fmt_amt(float(mv)) if mv else ""
@@ -394,11 +395,14 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
             Paragraph(mv_str, S_CENTER),
             Paragraph(str(row.get("qty", 1)), S_CENTER),
         ])
+        real_row_count += 1
     min_rows = max(len(data), 8)
     while len(data) < min_rows:
         data.append([Paragraph("", S_NORMAL)] * 4)
 
-    row_heights = [12.5 * mm] + [11.5 * mm] * (len(data) - 1)
+    row_heights = [12.5 * mm]
+    row_heights.extend([11.5 * mm] * real_row_count)
+    row_heights.extend([9.2 * mm] * (len(data) - 1 - real_row_count))
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 15.5),
@@ -430,6 +434,7 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
     ]
     col_w = [14 * mm, 86 * mm, 18 * mm, 32 * mm, 16 * mm, 38 * mm]
     data: list[list] = [header]
+    real_row_count = 0
     for i, row in enumerate(rows):
         data.append([
             Paragraph(str(i + 1), S_PF_CENTER),
@@ -439,11 +444,14 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
             Paragraph(str(row.get("qty", 1)), S_PF_CENTER),
             Paragraph(fmt_amt(float(row.get("AMT", 0))), S_PF_RIGHT),
         ])
+        real_row_count += 1
     min_rows = max(len(data), min(len(data) + 1, 8))
     while len(data) < min_rows:
         data.append([Paragraph("", S_PF_NORMAL)] * 6)
 
-    row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
+    row_heights: list[float | None] = [14.5 * mm]
+    row_heights.extend([None] * real_row_count)
+    row_heights.extend([13.5 * mm] * (len(data) - 1 - real_row_count))
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 16.5),

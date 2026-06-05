@@ -1481,6 +1481,7 @@ class DCForm(EntryFormBase):
     def _build_extra_header(self, parent: tk.Frame) -> None:
         self._customer_dc_no = tk.StringVar()
         self._customer_dc_date = tk.StringVar()
+        self._po_no = tk.StringVar()
         self._inward_ref_num = ""
         self._inward_ref_date = ""
         lbl(parent, "Customer D.C. No.").grid(
@@ -1493,12 +1494,18 @@ class DCForm(EntryFormBase):
         ent(parent, self._customer_dc_date, width=14).grid(
             row=self._hdr_row_offset + 4, column=6, columnspan=2,
             sticky="w", padx=3)
+        lbl(parent, "PO No.").grid(
+            row=self._hdr_row_offset + 5, column=0, sticky="e", padx=3, pady=2)
+        ent(parent, self._po_no, width=30).grid(
+            row=self._hdr_row_offset + 5, column=1, columnspan=4,
+            sticky="w", padx=3)
 
     def _extra_header_fields(self) -> dict[str, Any]:
         customer_dc_no = self._customer_dc_no.get().strip()
         return {
             "CUSTOMER_DC_NO": customer_dc_no,
             "CUSTOMER_DC_DATE": parse_date(self._customer_dc_date.get()),
+            "PO_NO": self._po_no.get().strip(),
             "GOODS_VALUE": customer_dc_no,
             "sdidcno":     getattr(self, "_inward_ref_num", ""),
             "sdidt":       getattr(self, "_inward_ref_date", ""),
@@ -1507,6 +1514,7 @@ class DCForm(EntryFormBase):
     def _reset_extra_fields(self) -> None:
         self._customer_dc_no.set("")
         self._customer_dc_date.set("")
+        self._po_no.set("")
         self._inward_ref_num = ""
         self._inward_ref_date = ""
 
@@ -1518,6 +1526,7 @@ class DCForm(EntryFormBase):
             customer_dc_no = row_value(row, "PDC")
         self._customer_dc_no.set(customer_dc_no)
         self._customer_dc_date.set(row_value(row, "CUSTOMER_DC_DATE"))
+        self._po_no.set(row_value(row, "PO_NO"))
         try:
             self._inward_ref_num = row["sdidcno"] or ""
             self._inward_ref_date = row["sdidt"] or ""
@@ -1627,6 +1636,7 @@ class DCForm(EntryFormBase):
     def _print_dc(self) -> None:
         d = self._get_print_data()
         d["customer_dc_no"] = self._customer_dc_no.get()
+        d["po_no"] = self._po_no.get()
         # Inject mould_value into each row for the print pipeline
         for row in d["rows"]:
             row["mould_value"] = row.get("MOULD_VALUE", 0)
