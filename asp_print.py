@@ -400,9 +400,9 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
     while len(data) < min_rows:
         data.append([Paragraph("", S_NORMAL)] * 4)
 
-    row_heights = [12.5 * mm]
-    row_heights.extend([11.5 * mm] * real_row_count)
-    row_heights.extend([9.2 * mm] * (len(data) - 1 - real_row_count))
+    row_heights = [11 * mm]
+    row_heights.extend([10 * mm] * real_row_count)
+    row_heights.extend([7 * mm] * (len(data) - 1 - real_row_count))
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 15.5),
@@ -597,7 +597,9 @@ def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
         "DC No.",
         extra_meta_rows=[
             ("Customer DC.No", data.get("customer_dc_no") or data.get("CUSTOMER_DC_NO") or ""),
+            ("Customer DC Date", data.get("customer_dc_date") or data.get("CUSTOMER_DC_DATE") or ""),
             ("PO No", data.get("po_no") or data.get("PO_NO") or data.get("pono") or ""),
+            ("PO Date", data.get("po_date") or data.get("PO_DATE") or ""),
         ],
     )
     _ref_sub_block(story, data)
