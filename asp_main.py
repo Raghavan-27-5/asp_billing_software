@@ -489,6 +489,7 @@ class MainMenu(tk.Toplevel):
             ("Inward Statement",        self.app.open_inward_stmt),
             ("Datewise Bill Statement", self.app.open_bill_stmt),
             ("Sales GST Statement",     self.app.open_gst_stmt),
+            ("Paper Head",              self.app.open_paper_head),
             ("Delete",                  self.app.open_delete),
             ("Others",                  self.app.open_others),
         ]:
@@ -3398,6 +3399,11 @@ class App:
 
     def open_po(self)             -> None:
         if self._guard(): POForm(self.root, self)
+
+    def open_paper_head(self)     -> None:
+        if self._guard():
+            path = pr.print_paper_head(db.REPORTS_DIR, open_pdf=True)
+            messagebox.showinfo("PDF", f"Saved: {path}", parent=self.root)
 
     def open_cheque_pay(self)     -> None:
         if self._guard(): ChequePayForm(self.root, self)

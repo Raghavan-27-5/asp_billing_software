@@ -341,6 +341,7 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
     ]
     col_w = [14 * mm, 86 * mm, 18 * mm, 32 * mm, 16 * mm, 38 * mm]
     data: list[list] = [header]
+    real_row_count = 0
     for i, row in enumerate(rows):
         data.append([
             Paragraph(str(i + 1), S_CENTER),
@@ -350,11 +351,14 @@ def _line_items_table(rows: list[dict[str, Any]]) -> Table:
             Paragraph(str(row.get("qty", 1)), S_CENTER),
             Paragraph(fmt_amt(float(row.get("AMT", 0))), S_RIGHT),
         ])
+        real_row_count += 1
     min_rows = max(len(data), min(len(data) + 1, 8))
     while len(data) < min_rows:
         data.append([Paragraph("", S_NORMAL)] * 6)
 
-    row_heights = [12.5 * mm] + [13.5 * mm] * (len(data) - 1)
+    row_heights = [12.0 * mm]
+    row_heights.extend([None] * real_row_count)
+    row_heights.extend([4.2 * mm] * (len(data) - 1 - real_row_count))
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 15.5),
@@ -401,8 +405,8 @@ def _line_items_table_dc(rows: list[dict[str, Any]]) -> Table:
         data.append([Paragraph("", S_NORMAL)] * 4)
 
     row_heights = [11 * mm]
-    row_heights.extend([10 * mm] * real_row_count)
-    row_heights.extend([7 * mm] * (len(data) - 1 - real_row_count))
+    row_heights.extend([None] * real_row_count)
+    row_heights.extend([4.0 * mm] * (len(data) - 1 - real_row_count))
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 15.5),
@@ -449,9 +453,9 @@ def _line_items_table_proforma(rows: list[dict[str, Any]]) -> Table:
     while len(data) < min_rows:
         data.append([Paragraph("", S_PF_NORMAL)] * 6)
 
-    row_heights: list[float | None] = [14.5 * mm]
+    row_heights: list[float | None] = [14.0 * mm]
     row_heights.extend([None] * real_row_count)
-    row_heights.extend([13.5 * mm] * (len(data) - 1 - real_row_count))
+    row_heights.extend([4.2 * mm] * (len(data) - 1 - real_row_count))
     t = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     t.setStyle(TableStyle([
         ("FONTSIZE",      (0, 0), (-1, -1), 16.5),
@@ -551,7 +555,7 @@ def _signature_block(story: list) -> None:
             ["", Paragraph(f"For {COMPANY['name']}", S_RIGHT_B)],
         ],
         colWidths=[CONTENT_W - 94 * mm, 94 * mm],
-        rowHeights=[24 * mm],
+        rowHeights=[20 * mm],
     )
     sig.setStyle(TableStyle([
         ("LINEABOVE",     (0, 0), (-1, 0), 2.0, colors.black),
@@ -569,7 +573,7 @@ def _build_story(data: dict[str, Any], doc_type: str, no_label: str) -> list:
     _company_header(story)
     _party_block(story, data, doc_type, no_label)
     story.append(_line_items_table(data.get("rows", [])))
-    story.append(Spacer(1, 0.8 * mm))
+    story.append(Spacer(1, 0.4 * mm))
     _totals_block(story, data)
     _signature_block(story)
     return story
@@ -606,9 +610,9 @@ def _build_story_dc(data: dict[str, Any], copy_label: str = "ORIGINAL") -> list:
     story.append(Spacer(1, 1.4 * mm))
 
     story.append(_line_items_table_dc(data.get("rows", [])))
-    story.append(Spacer(1, 1.2 * mm))
+    story.append(Spacer(1, 0.6 * mm))
     story.append(Paragraph("Only Job Work Not For Sale", S_BOLD))
-    story.append(Spacer(1, 1.6 * mm))
+    story.append(Spacer(1, 0.8 * mm))
     _signature_block(story)
     return story
 
@@ -635,7 +639,7 @@ def _build_story_proforma(data: dict[str, Any]) -> list:
     story.append(Spacer(1, 1.4 * mm))
 
     story.append(_line_items_table_proforma(data.get("rows", [])))
-    story.append(Spacer(1, 0.8 * mm))
+    story.append(Spacer(1, 0.4 * mm))
 
     _totals_block(
         story,
@@ -647,6 +651,12 @@ def _build_story_proforma(data: dict[str, Any]) -> list:
         small_bold=S_PF_SMALL_B,
     )
     _signature_block(story)
+    return story
+
+
+def _build_story_paper_head() -> list:
+    story: list = []
+    _company_header(story)
     return story
 
 
@@ -715,6 +725,14 @@ def print_purchase_order(data: dict[str, Any], reports_dir: Path,
                          open_pdf: bool = True) -> str:
     path = str(reports_dir / f"PO_{data['no']}.pdf")
     _render(_build_story(data, "PURCHASE ORDER", "PO No."), path)
+    if open_pdf:
+        _open_pdf(path)
+    return path
+
+
+def print_paper_head(reports_dir: Path, open_pdf: bool = True) -> str:
+    path = str(reports_dir / "PaperHead.pdf")
+    _render(_build_story_paper_head(), path)
     if open_pdf:
         _open_pdf(path)
     return path
