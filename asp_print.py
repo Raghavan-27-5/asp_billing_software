@@ -98,7 +98,9 @@ def _resource_path(*parts: str) -> Path:
 
 def _company_header(story: list) -> None:
     from reportlab.platypus import Image
-    logo_path = _resource_path("ref", "old_ui", "asp_logo.jpg")
+    logo_path = _resource_path("ref", "old_ui", "asp_logo.png")
+    if not logo_path.exists():
+        logo_path = _resource_path("ref", "old_ui", "asp_logo.jpg")
     
     if logo_path.exists():
         # Enlarged so the small service text remains legible in print.
